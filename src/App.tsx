@@ -603,7 +603,7 @@ export default function App() {
         selectionKey(businessSelection) !==
           selectionKey(status.business_granted));
   const saveDisabled = disabled || !hasChanges;
-  const setAllAccess = (access: "read" | "write") => {
+  const setAllAccess = (access: AccessChoice) => {
     let nextSelection = selection;
     for (const info of catalogue) {
       if (!info.enabled || (access === "write" && !info.write_enabled)) {
@@ -717,6 +717,14 @@ export default function App() {
               Lo que pueden usar tus agentes
             </h2>
             <div className="flex shrink-0 items-center gap-2 text-xs">
+              <button
+                type="button"
+                className="text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+                disabled={disabled}
+                onClick={() => setAllAccess("off")}
+              >
+                Todo apagado
+              </button>
               <button
                 type="button"
                 className="text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"

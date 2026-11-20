@@ -141,7 +141,7 @@ fn every_command_carries_client_no_color_and_removes_credential_overrides() {
     );
     assert_eq!(
         env(&command, "GOOGLE_WORKSPACE_CLI_CLIENT_SECRET"),
-        None
+        Some("")
     );
     assert_eq!(env(&command, "NO_COLOR"), Some("1"));
     for removed in [

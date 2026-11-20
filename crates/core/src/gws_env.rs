@@ -61,6 +61,8 @@ impl Core {
             settings.resolved_key_storage().backend(),
         );
         set("GOOGLE_WORKSPACE_CLI_CLIENT_ID", CLIENT_ID);
+        // gws requires the variable to exist, but Desktop OAuth does not require a secret.
+        set("GOOGLE_WORKSPACE_CLI_CLIENT_SECRET", "");
         set("NO_COLOR", "1");
         command
             .env_remove

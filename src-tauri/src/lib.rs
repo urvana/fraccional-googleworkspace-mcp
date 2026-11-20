@@ -354,8 +354,14 @@ pub fn run() {
             install_mcp_extension,
             skills_install_command
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // A login left running would keep its callback port open after the app exits.
+            if let (tauri::RunEvent::Exit, Some(core)) = (event, app.try_state::<Core>()) {
+                let _ = core.cancel_login();
+            }
+        });
 }
 
 /// Unminimizes, shows and focuses the window with this label. Does nothing when no window has it.

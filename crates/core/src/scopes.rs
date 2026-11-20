@@ -126,7 +126,6 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
             "chat.spaces.pins",
             "chat.customemojis",
             "chat.delete",
-            "chat.import",
             "chat.admin.spaces",
             "chat.admin.memberships",
             "chat.admin.delete",

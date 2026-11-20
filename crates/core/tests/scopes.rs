@@ -174,7 +174,6 @@ const WRITE_ROWS: [(Service, &[&str]); 14] = [
             "chat.spaces.pins",
             "chat.customemojis",
             "chat.delete",
-            "chat.import",
             "chat.admin.spaces",
             "chat.admin.memberships",
             "chat.admin.delete",

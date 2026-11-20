@@ -3,10 +3,10 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use haulmer_googleworkspace_mcp_core::gws_env::{MARKER_FILE, write_marker};
-use haulmer_googleworkspace_mcp_core::revoke::REVOKE_URL;
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner, HttpRequest};
-use haulmer_googleworkspace_mcp_core::{Core, CoreError, HttpResponse, Paths, RevokeOutcome};
+use fraccional_googleworkspace_mcp_core::gws_env::{MARKER_FILE, write_marker};
+use fraccional_googleworkspace_mcp_core::revoke::REVOKE_URL;
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner, HttpRequest};
+use fraccional_googleworkspace_mcp_core::{Core, CoreError, HttpResponse, Paths, RevokeOutcome};
 use tempfile::TempDir;
 
 const TOKEN: &str = "1//refresh-token-secret";
@@ -26,7 +26,7 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let (home, app_data) = (TempDir::new().unwrap(), TempDir::new().unwrap());
-    let config_dir = home.path().join("haulmer-gws");
+    let config_dir = home.path().join("fraccional-gws");
     let runner = Arc::new(FakeRunner::new());
     let http = Arc::new(FakeHttp::new());
     let paths = Paths {

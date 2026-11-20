@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.7.5", features = [] }
 
 [dependencies]
-haulmer-googleworkspace-mcp-core = { path = "../crates/core" }
+fraccional-googleworkspace-mcp-core = { path = "../crates/core" }
 tauri = { version = "2.12.6", features = ["tray-icon", "image-png"] }
 serde_json = "1.0.154"
 tauri-plugin-dialog = "2.8.4"
@@ -22,3 +22,4 @@ tauri-plugin-opener = "2.7.3"
 tauri-plugin-process = "2.4.0"
 tauri-plugin-single-instance = "2.5.5"
 tauri-plugin-updater = "2.14.1"
+tauri-plugin-notification = "2"

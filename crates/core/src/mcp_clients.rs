@@ -13,7 +13,7 @@ use crate::skills::skills_add_command;
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::mcp_clients::InstallPrompt;
+/// use fraccional_googleworkspace_mcp_core::mcp_clients::InstallPrompt;
 /// let prompt = InstallPrompt { text: "...".into(), warning: None };
 /// assert_eq!(serde_json::to_string(&prompt).unwrap(), r#"{"text":"...","warning":null}"#);
 /// ```
@@ -35,7 +35,7 @@ pub struct InstallPrompt {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::mcp_clients::install_prompt;
+/// use fraccional_googleworkspace_mcp_core::mcp_clients::install_prompt;
 /// let installed = "/Applications/fraccional-googleworkspace-mcp.app/Contents/MacOS/fraccional-googleworkspace-mcp";
 /// let prompt = install_prompt(installed.as_ref()).unwrap();
 /// assert!(prompt.text.contains(&format!("-- \"{installed}\" mcp")));
@@ -64,7 +64,7 @@ pub fn install_prompt(exe: &Path) -> Result<InstallPrompt, CoreError> {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::mcp_clients::check_exe_path;
+/// use fraccional_googleworkspace_mcp_core::mcp_clients::check_exe_path;
 /// let installed = "/Applications/fraccional-googleworkspace-mcp.app/Contents/MacOS/fraccional-googleworkspace-mcp";
 /// assert_eq!(check_exe_path(installed.as_ref()), Ok(None));
 ///

@@ -1,7 +1,7 @@
 //! `mcp_clients::install_prompt`: the Spanish text a person pastes into an Agent.
 
-use haulmer_googleworkspace_mcp_core::CoreError;
-use haulmer_googleworkspace_mcp_core::mcp_clients::{check_exe_path, install_prompt};
+use fraccional_googleworkspace_mcp_core::CoreError;
+use fraccional_googleworkspace_mcp_core::mcp_clients::{check_exe_path, install_prompt};
 
 const MAC_EXE: &str = "/Applications/fraccional-googleworkspace-mcp.app/Contents/MacOS/fraccional-googleworkspace-mcp";
 const WINDOWS_EXE: &str =

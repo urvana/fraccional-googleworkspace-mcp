@@ -21,7 +21,7 @@ impl Core {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() });
     /// let status = core.status().unwrap();
     /// println!("{:?}", status.account);

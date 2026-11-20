@@ -40,7 +40,7 @@ type RpcError = (i32, &'static str);
 /// # Example
 ///
 /// ```
-/// # use haulmer_googleworkspace_mcp_core::{Core, Paths, mcp};
+/// # use fraccional_googleworkspace_mcp_core::{Core, Paths, mcp};
 /// # let dir = tempfile::tempdir().unwrap();
 /// # let core = Core::system(Paths { home: dir.path().into(), app_data: dir.path().into() });
 /// let input = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n";
@@ -288,7 +288,7 @@ fn level_label(can_write: bool, can_read: bool) -> Option<&'static str> {
 ///
 /// ```ignore
 /// let text = status_text(&status);
-/// assert!(text.starts_with("Cuenta: ana@haulmer.com\nSesión: válida\n"));
+/// assert!(text.starts_with("Cuenta: ana@fraccional.com\nSesión: válida\n"));
 /// ```
 fn status_text(status: &Status) -> String {
     let mut lines: Vec<String> = Vec::new();

@@ -3,12 +3,12 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use haulmer_googleworkspace_mcp_core::gws_env::{
+use fraccional_googleworkspace_mcp_core::gws_env::{
     MARKER_FILE, credentials_exist, foreign_credentials, remove_marker, write_marker,
 };
-use haulmer_googleworkspace_mcp_core::oauth_client::{CLIENT_ID, CLIENT_SECRET};
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeRunner};
-use haulmer_googleworkspace_mcp_core::{CommandSpec, Core, KeyStorage, Paths};
+use fraccional_googleworkspace_mcp_core::oauth_client::{CLIENT_ID, CLIENT_SECRET};
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeRunner};
+use fraccional_googleworkspace_mcp_core::{CommandSpec, Core, KeyStorage, Paths};
 use tempfile::TempDir;
 
 /// Temp home + temp app data and a core over them.
@@ -48,7 +48,7 @@ fn env<'a>(command: &'a CommandSpec, name: &str) -> Option<&'a str> {
 #[test]
 fn custom_folder_passes_config_dir_and_file_backend() {
     let f = fixture();
-    let custom = f.home.path().join("haulmer-gws");
+    let custom = f.home.path().join("fraccional-gws");
     f.core.set_config_dir(Some(custom.clone())).unwrap();
 
     let command = status_command(&f.core);
@@ -90,7 +90,7 @@ fn default_folder_removes_an_inherited_config_dir() {
 fn custom_folder_does_not_remove_config_dir() {
     let f = fixture();
     f.core
-        .set_config_dir(Some(f.home.path().join("haulmer-gws")))
+        .set_config_dir(Some(f.home.path().join("fraccional-gws")))
         .unwrap();
     let command = status_command(&f.core);
     assert!(

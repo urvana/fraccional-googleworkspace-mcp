@@ -1,4 +1,4 @@
-Conecta Claude con tu Google Workspace de Haulmer: Gmail, Calendar, Drive, Chat, Sheets, Forms, Docs, Slides, Meet, Tasks y Contactos.
+Conecta Claude con tu Google Workspace de Fraccional: Gmail, Calendar, Drive, Chat, Sheets, Forms, Docs, Slides, Meet, Tasks y Contactos.
 
 **Qué le puedes pedir**
 - "Resume mis correos sin leer y responde el de finanzas." (requiere Escritura en Gmail)
@@ -16,7 +16,7 @@ Conecta Claude con tu Google Workspace de Haulmer: Gmail, Calendar, Drive, Chat,
 - Corre en tu equipo, no en un servidor remoto.
 
 **Cómo funciona**
-- Solo funciona con cuentas @haulmer.com.
+- Solo funciona con cuentas @fraccional.com.
 - Necesita la app fraccional-googleworkspace-mcp instalada en tu equipo, con tu cuenta conectada.
 - Tú controlas los permisos en la app: Lectura o Escritura por servicio, y puedes revocarlos cuando quieras.
 - fraccional-googleworkspace-mcp no tiene servidores. Tu sesión de Google queda cifrada en tu equipo, con la clave en el llavero del sistema. Lo que Claude lee con estas herramientas pasa a tu conversación con Claude.

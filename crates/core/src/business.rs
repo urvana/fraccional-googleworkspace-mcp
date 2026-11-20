@@ -24,11 +24,11 @@ impl Core {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() });
     /// let channel = core.youtube_channel()?;
     /// println!("{}", channel["items"][0]["snippet"]["title"]);
-    /// # Ok::<(), haulmer_googleworkspace_mcp_core::CoreError>(())
+    /// # Ok::<(), fraccional_googleworkspace_mcp_core::CoreError>(())
     /// ```
     pub fn youtube_channel(&self) -> Result<Value, CoreError> {
         YoutubeConnector { core: self }.fetch()

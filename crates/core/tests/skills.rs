@@ -4,9 +4,9 @@ use std::fs;
 use std::io::{Cursor, Read};
 use std::sync::Arc;
 
-use haulmer_googleworkspace_mcp_core::skills::SKILLS_TARBALL_URL;
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner};
-use haulmer_googleworkspace_mcp_core::{Core, CoreError, HttpResponse, Paths};
+use fraccional_googleworkspace_mcp_core::skills::SKILLS_TARBALL_URL;
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner};
+use fraccional_googleworkspace_mcp_core::{Core, CoreError, HttpResponse, Paths};
 use sha2::{Digest, Sha256};
 use tempfile::TempDir;
 
@@ -78,7 +78,7 @@ fn append_raw(builder: &mut tar::Builder<Vec<u8>>, raw_path: &str, content: &str
 
 /// Scopes `gws auth status` reports for Gmail read and Meet read.
 const GMAIL_AND_MEET: &str = r#"{
-  "user": "ana@haulmer.com",
+  "user": "ana@fraccional.com",
   "scopes": [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/meetings.space.readonly"
@@ -194,7 +194,7 @@ fn export_holds_shared_and_granted_service_skills() {
 #[test]
 fn a_custom_config_folder_adds_an_environment_section_to_the_shared_skill() {
     let fixture = Fixture::new(tarball(|_| {}));
-    let custom = fixture.home.path().join("haulmer-gws");
+    let custom = fixture.home.path().join("fraccional-gws");
     fixture.core.set_config_dir(Some(custom.clone())).unwrap();
     // The credentials of the connected account now live in the custom folder.
     fs::create_dir_all(&custom).unwrap();

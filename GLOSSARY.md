@@ -1,6 +1,6 @@
-# haulmer-googleworkspace-mcp
+# fraccional-googleworkspace-mcp
 
-A desktop app that lets a Haulmer employee give their AI tools access to their own Google Workspace data.
+A desktop app that lets a Fraccional employee give their AI tools access to their own Google Workspace data.
 
 ## Language
 
@@ -23,9 +23,9 @@ _Avoid_: web client, web agent
 ### Connecting
 
 **Install prompt**:
-The text a person pastes into an **Agent** so that the Agent connects itself to haulmer-googleworkspace-mcp. A **Chat app** cannot act on it, so it turns the prompt into manual steps for the person.
+The text a person pastes into an **Agent** so that the Agent connects itself to fraccional-googleworkspace-mcp. A **Chat app** cannot act on it, so it turns the prompt into manual steps for the person.
 _Avoid_: setup prompt, copy prompt, install instructions
 
 **MCP extension**:
-A one-click installer file (`.mcpb`) that haulmer-googleworkspace-mcp generates and that a compatible **Chat app**, such as Claude Desktop, opens to connect itself to haulmer-googleworkspace-mcp.
+A one-click installer file (`.mcpb`) that fraccional-googleworkspace-mcp generates and that a compatible **Chat app**, such as Claude Desktop, opens to connect itself to fraccional-googleworkspace-mcp.
 _Avoid_: DXT, desktop extension, bundle

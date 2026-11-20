@@ -20,7 +20,7 @@ const LONG_DESCRIPTION: &str = include_str!("mcp_extension_long_description.es.m
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::mcp_extension::McpExtension;
+/// use fraccional_googleworkspace_mcp_core::mcp_extension::McpExtension;
 /// let extension = McpExtension { bytes: vec![0x50, 0x4b], warning: None };
 /// assert_eq!(extension.bytes.len(), 2);
 /// ```
@@ -46,7 +46,7 @@ pub struct McpExtension {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::mcp_extension::mcp_extension;
+/// use fraccional_googleworkspace_mcp_core::mcp_extension::mcp_extension;
 /// let exe = "/Applications/fraccional-googleworkspace-mcp.app/Contents/MacOS/fraccional-googleworkspace-mcp";
 /// let extension = mcp_extension(exe.as_ref(), b"png bytes").unwrap();
 /// assert!(extension.bytes.starts_with(b"PK"));
@@ -69,11 +69,11 @@ pub fn mcp_extension(exe: &Path, icon_png: &[u8]) -> Result<McpExtension, CoreEr
         "name": "fraccional-googleworkspace-mcp",
         "display_name": "fraccional-googleworkspace-mcp",
         "version": env!("CARGO_PKG_VERSION"),
-        "description": "Gmail, Google Calendar, Drive, Google Chat, Sheets, Forms y más de tu cuenta @haulmer.com, desde Claude.",
+        "description": "Gmail, Google Calendar, Drive, Google Chat, Sheets, Forms y más de tu cuenta @fraccional.com, desde Claude.",
         "long_description": LONG_DESCRIPTION,
-        "author": {"name": "Haulmer"},
-        "homepage": "https://github.com/lopezjurip/fraccional-googleworkspace-mcp",
-        "support": "https://github.com/lopezjurip/fraccional-googleworkspace-mcp/issues",
+        "author": {"name": "Fraccional"},
+        "homepage": "https://github.com/urvana/fraccional-googleworkspace-mcp",
+        "support": "https://github.com/urvana/fraccional-googleworkspace-mcp/issues",
         "icon": "icon.png",
         "icons": [
             {"src": "icon.png", "size": "512x512", "theme": "light"},
@@ -83,7 +83,7 @@ pub fn mcp_extension(exe: &Path, icon_png: &[u8]) -> Result<McpExtension, CoreEr
             "google workspace", "gmail", "correo", "email", "google calendar", "calendario",
             "agenda", "google drive", "archivos", "google chat", "google sheets", "planillas",
             "google forms", "formularios", "google docs", "google slides", "google meet",
-            "google tasks", "contactos", "haulmer"
+            "google tasks", "contactos", "fraccional"
         ],
         "privacy_policies": ["https://policies.google.com/privacy"],
         "server": {

@@ -1,13 +1,13 @@
-# haulmer-googleworkspace-mcp
+# fraccional-googleworkspace-mcp
 
-`haulmer-googleworkspace-mcp` is a Tauri desktop app for granting local AI agents access to
+`fraccional-googleworkspace-mcp` is a Tauri desktop app for granting local AI agents access to
 Google Workspace and selected Google business APIs. It runs locally on macOS and
 Windows; tokens stay on the user's machine.
 
 The app delegates OAuth, token storage, refresh and API calls to the pinned
 [Google Workspace CLI](https://github.com/googleworkspace/cli) (`gws`).
 The shared OAuth client is a Google **Desktop** client with an **Internal**
-audience, restricted to Haulmer accounts.
+audience, restricted to Fraccional accounts.
 
 ## Repository layout
 
@@ -73,13 +73,17 @@ pnpm build                # TypeScript check + Vite production build
 
 ## Google Cloud setup
 
+This setup is not required for normal use: the application already includes
+the public OAuth client credentials. The steps below are only needed to
+administer or modify the Google Cloud project.
+
 The current OAuth client lives in the renamed Google Cloud project:
 
 - Project ID: `fraccional-gws-mcp`
-- Project name: `haulmer-googleworkspace-mcp`
+- Project name: `fraccional-googleworkspace-mcp`
 - Project number: `252304543508`
 - OAuth audience: **Internal**
-- Allowed users: `@haulmer.com`
+- Allowed users: `@fraccional.com`
 
 Authenticate and select the project:
 
@@ -150,7 +154,7 @@ before you start it:
 
 ```sh
 # macOS
-APP_DATA="$HOME/Library/Application Support/com.haulmer.googleworkspace.mcp"
+APP_DATA="$HOME/Library/Application Support/com.fraccional.googleworkspace.mcp"
 mkdir -p "$APP_DATA"
 cat > "$APP_DATA/settings.json" <<EOF
 { "config_dir": "$PWD/.local/gws", "key_storage": "auto" }
@@ -158,7 +162,7 @@ EOF
 pnpm tauri dev
 ```
 
-On Windows the file is `%APPDATA%\com.haulmer.googleworkspace.mcp\settings.json`.
+On Windows the file is `%APPDATA%\com.fraccional.googleworkspace.mcp\settings.json`.
 With a custom folder, `"auto"` key storage keeps the encryption key in
 `.encryption_key` inside that folder. `.local/` is ignored by git.
 
@@ -175,7 +179,7 @@ back to the default folder, delete `settings.json`, or set `"config_dir"` to
 The installed app can run as an MCP server:
 
 ```sh
-/Applications/haulmer-googleworkspace-mcp.app/Contents/MacOS/haulmer-googleworkspace-mcp mcp
+/Applications/fraccional-googleworkspace-mcp.app/Contents/MacOS/fraccional-googleworkspace-mcp mcp
 ```
 
 ### Connect an agent
@@ -188,7 +192,7 @@ works with no Google account connected, and it has two cards.
 1. Click **Instalar MCP**.
 2. Your AI app opens (for example Claude Desktop). Click "Instalar" there.
 
-The app builds `haulmer-googleworkspace-mcp.mcpb`, saves it in its data folder and opens it
+The app builds `fraccional-googleworkspace-mcp.mcpb`, saves it in its data folder and opens it
 with the default app. The OS hands the file to a compatible Chat app, which
 shows its own install dialog. If no app can open `.mcpb` files, the window says
 so ("No encontré una app que abra extensiones MCP. Usa el prompt de abajo.").
@@ -233,11 +237,11 @@ inside the bundle.
 Use this only if you configure a client by hand. For Claude Code and Codex:
 
 ```sh
-claude mcp add --scope user haulmer-googleworkspace-mcp -- "<path-to-haulmer-googleworkspace-mcp>" mcp
-claude mcp get haulmer-googleworkspace-mcp
+claude mcp add --scope user fraccional-googleworkspace-mcp -- "<path-to-fraccional-googleworkspace-mcp>" mcp
+claude mcp get fraccional-googleworkspace-mcp
 
-codex mcp add haulmer-googleworkspace-mcp -- "<path-to-haulmer-googleworkspace-mcp>" mcp
-codex mcp get haulmer-googleworkspace-mcp
+codex mcp add fraccional-googleworkspace-mcp -- "<path-to-fraccional-googleworkspace-mcp>" mcp
+codex mcp get fraccional-googleworkspace-mcp
 ```
 
 For Claude Desktop, use **Instalar MCP** instead. If you prefer to edit its
@@ -247,8 +251,8 @@ configuration by hand (Edit Config):
 // ~/Library/Application Support/Claude/claude_desktop_config.json
 {
   "mcpServers": {
-    "haulmer-googleworkspace-mcp": {
-      "command": "<path-to-haulmer-googleworkspace-mcp>",
+    "fraccional-googleworkspace-mcp": {
+      "command": "<path-to-fraccional-googleworkspace-mcp>",
       "args": ["mcp"]
     }
   }
@@ -259,8 +263,8 @@ configuration by hand (Edit Config):
 # ChatGPT desktop, Codex CLI and IDE extensions:
 # ~/.codex/config.toml
 # In ChatGPT desktop you can also use Settings > MCP servers.
-[mcp_servers.haulmer-googleworkspace-mcp]
-command = "<path-to-haulmer-googleworkspace-mcp>"
+[mcp_servers.fraccional-googleworkspace-mcp]
+command = "<path-to-fraccional-googleworkspace-mcp>"
 args = ["mcp"]
 ```
 
@@ -272,15 +276,15 @@ args = ["mcp"]
   (with "Lectura" or "Lectura y Escritura") and the ones it may not, the business
   connectors, and the next step to activate more services. Models should call it
   first.
-- `open_haulmer_googleworkspace_mcp`: opens the desktop app on its settings window.
+- `open_fraccional_googleworkspace_mcp`: opens the desktop app on its settings window.
 
 It is best to authenticate in the desktop app first, but you do not have to.
 When a `gws` call fails, the server answers in Spanish with the next step. It
 names the exact button (**Abrir configuración**, **Conectar** or **Guardar**)
 for a missing `gws`, no account, an expired session or a missing permission, and
-it suggests `open_haulmer_googleworkspace_mcp`.
+it suggests `open_fraccional_googleworkspace_mcp`.
 
-The app allows one instance. A second launch, including `open_haulmer_googleworkspace_mcp`,
+The app allows one instance. A second launch, including `open_fraccional_googleworkspace_mcp`,
 shows the settings window instead of starting a second tray icon.
 
 ## Releases and updater signatures
@@ -301,7 +305,7 @@ with an Apple Developer ID certificate or a Windows Authenticode certificate.
 Keep the private key outside the repository:
 
 ```sh
-pnpm tauri signer generate -w ~/.tauri/haulmer-googleworkspace-mcp.key
+pnpm tauri signer generate -w ~/.tauri/fraccional-googleworkspace-mcp.key
 ```
 
 The command writes a private key and prints the public key. Put only the public
@@ -312,7 +316,7 @@ future updates.
 For a local signed build on macOS/Linux:
 
 ```sh
-export TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/haulmer-googleworkspace-mcp.key"
+export TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/fraccional-googleworkspace-mcp.key"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<key-password>"
 pnpm tauri build
 ```
@@ -320,7 +324,7 @@ pnpm tauri build
 On PowerShell:
 
 ```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY="$HOME\.tauri\haulmer-googleworkspace-mcp.key"
+$env:TAURI_SIGNING_PRIVATE_KEY="$HOME\.tauri\fraccional-googleworkspace-mcp.key"
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<key-password>"
 pnpm tauri build
 ```
@@ -368,19 +372,19 @@ the workflow uses the secret contents.
 The updater endpoint is:
 
 ```text
-https://github.com/lopezjurip/haulmer-googleworkspace-mcp/releases/latest/download/latest.json
+https://github.com/urvana/fraccional-googleworkspace-mcp/releases/latest/download/latest.json
 ```
 
 Verify installer downloads:
 
 ```sh
-shasum -a 256 -c haulmer-googleworkspace-mcp_*.dmg.sha256
+shasum -a 256 -c fraccional-googleworkspace-mcp_*.dmg.sha256
 ```
 
 On PowerShell:
 
 ```powershell
-Get-FileHash .\haulmer-googleworkspace-mcp_*setup.exe -Algorithm SHA256
+Get-FileHash .\fraccional-googleworkspace-mcp_*setup.exe -Algorithm SHA256
 ```
 
 Because pilot installers are not OS-code-signed, macOS may require

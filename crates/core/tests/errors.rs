@@ -1,6 +1,6 @@
 //! How errors reach the UI: their display message as a JSON string.
 
-use haulmer_googleworkspace_mcp_core::CoreError;
+use fraccional_googleworkspace_mcp_core::CoreError;
 
 #[test]
 fn access_removed_has_a_distinct_message_telling_the_person_to_save_again() {

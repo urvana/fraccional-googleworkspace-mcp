@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::Service;
+/// use fraccional_googleworkspace_mcp_core::Service;
 /// assert_eq!(Service::ALL.len(), 15);
 /// assert_eq!(serde_json::to_string(&Service::Gmail).unwrap(), "\"gmail\"");
 /// ```
@@ -63,7 +63,7 @@ impl Service {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::Service;
+    /// use fraccional_googleworkspace_mcp_core::Service;
     /// assert_eq!(Service::Calendar.slug(), "calendar");
     /// ```
     pub fn slug(self) -> &'static str {
@@ -92,7 +92,7 @@ impl Service {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::Level;
+/// use fraccional_googleworkspace_mcp_core::Level;
 /// assert_eq!(serde_json::to_string(&Level::Write).unwrap(), "\"write\"");
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -107,7 +107,7 @@ pub enum Level {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{Level, Service, ServiceLevel};
+/// use fraccional_googleworkspace_mcp_core::{Level, Service, ServiceLevel};
 /// let level = ServiceLevel { service: Service::Gmail, level: Level::Read };
 /// assert_eq!(
 ///     serde_json::to_string(&level).unwrap(),
@@ -126,7 +126,7 @@ pub struct ServiceLevel {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{Level, Selection, Service};
+/// use fraccional_googleworkspace_mcp_core::{Level, Selection, Service};
 /// let mut selection = Selection::new();
 /// selection.insert(Service::Gmail, Level::Read);
 /// assert!(selection.contains(Service::Gmail, Level::Read));
@@ -142,7 +142,7 @@ impl Selection {
     /// # Example
     ///
     /// ```
-    /// assert!(haulmer_googleworkspace_mcp_core::Selection::new().is_empty());
+    /// assert!(fraccional_googleworkspace_mcp_core::Selection::new().is_empty());
     /// ```
     pub fn new() -> Self {
         Self::default()
@@ -153,7 +153,7 @@ impl Selection {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Level, Selection, Service};
+    /// use fraccional_googleworkspace_mcp_core::{Level, Selection, Service};
     /// let mut selection = Selection::new();
     /// assert!(selection.insert(Service::Drive, Level::Write));
     /// assert!(!selection.insert(Service::Drive, Level::Write));
@@ -167,7 +167,7 @@ impl Selection {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Level, Selection, Service};
+    /// use fraccional_googleworkspace_mcp_core::{Level, Selection, Service};
     /// let mut selection = Selection::from_levels([(Service::Chat, Level::Read)]);
     /// assert!(selection.remove(Service::Chat, Level::Read));
     /// assert!(selection.is_empty());
@@ -181,7 +181,7 @@ impl Selection {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Level, Selection, Service};
+    /// use fraccional_googleworkspace_mcp_core::{Level, Selection, Service};
     /// let selection = Selection::from_levels([(Service::Meet, Level::Read)]);
     /// assert!(selection.contains(Service::Meet, Level::Read));
     /// ```
@@ -194,7 +194,7 @@ impl Selection {
     /// # Example
     ///
     /// ```
-    /// assert!(haulmer_googleworkspace_mcp_core::Selection::new().is_empty());
+    /// assert!(fraccional_googleworkspace_mcp_core::Selection::new().is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -205,7 +205,7 @@ impl Selection {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Level, Selection, Service};
+    /// use fraccional_googleworkspace_mcp_core::{Level, Selection, Service};
     /// let selection = Selection::from_levels([(Service::Drive, Level::Read), (Service::Gmail, Level::Read)]);
     /// let services: Vec<Service> = selection.iter().map(|level| level.service).collect();
     /// assert_eq!(services, [Service::Gmail, Service::Drive]);
@@ -219,7 +219,7 @@ impl Selection {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Level, Selection, Service};
+    /// use fraccional_googleworkspace_mcp_core::{Level, Selection, Service};
     /// let selection = Selection::from_levels([(Service::Gmail, Level::Read), (Service::Gmail, Level::Write)]);
     /// assert_eq!(selection.iter().count(), 2);
     /// ```
@@ -239,7 +239,7 @@ impl Selection {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::KeyStorage;
+/// use fraccional_googleworkspace_mcp_core::KeyStorage;
 /// assert_eq!(KeyStorage::default(), KeyStorage::Auto);
 /// assert_eq!(serde_json::to_string(&KeyStorage::File).unwrap(), "\"file\"");
 /// ```
@@ -260,7 +260,7 @@ impl KeyStorage {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::KeyStorage;
+    /// use fraccional_googleworkspace_mcp_core::KeyStorage;
     /// assert_eq!(KeyStorage::File.backend(), "file");
     /// assert_eq!(KeyStorage::Keyring.backend(), "keyring");
     /// ```
@@ -278,7 +278,7 @@ impl KeyStorage {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::Paths;
+/// use fraccional_googleworkspace_mcp_core::Paths;
 /// let paths = Paths { home: "/home/ana".into(), app_data: "/home/ana/.local/share/fraccional-googleworkspace-mcp".into() };
 /// assert!(paths.app_data.starts_with(&paths.home));
 /// ```
@@ -295,7 +295,7 @@ pub struct Paths {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{KeyStorage, Settings};
+/// use fraccional_googleworkspace_mcp_core::{KeyStorage, Settings};
 /// let settings = Settings::default();
 /// assert_eq!(settings.config_dir, None);
 /// assert_eq!(settings.key_storage, KeyStorage::Auto);
@@ -313,7 +313,7 @@ pub struct Settings {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{BusinessSelection, KeyStorage, Selection, Status};
+/// use fraccional_googleworkspace_mcp_core::{BusinessSelection, KeyStorage, Selection, Status};
 /// let status = Status {
 ///     gws_available: true,
 ///     account: None,
@@ -357,7 +357,7 @@ pub struct Status {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::SaveOutcome;
+/// use fraccional_googleworkspace_mcp_core::SaveOutcome;
 /// assert_eq!(
 ///     serde_json::to_string(&SaveOutcome::NeedsReplaceConfirmation).unwrap(),
 ///     r#"{"kind":"needs_replace_confirmation"}"#
@@ -377,7 +377,7 @@ pub enum SaveOutcome {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::RevokeOutcome;
+/// use fraccional_googleworkspace_mcp_core::RevokeOutcome;
 /// assert_eq!(
 ///     serde_json::to_string(&RevokeOutcome::NeedsForeignConfirmation).unwrap(),
 ///     r#"{"kind":"needs_foreign_confirmation"}"#
@@ -398,7 +398,7 @@ pub enum RevokeOutcome {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{Service, ServiceCategory, ServiceInfo};
+/// use fraccional_googleworkspace_mcp_core::{Service, ServiceCategory, ServiceInfo};
 /// let info = ServiceInfo {
 ///     service: Service::Gmail,
 ///     name: "Gmail",
@@ -516,7 +516,7 @@ pub struct BusinessConnectorInfo {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::CoreError;
+/// use fraccional_googleworkspace_mcp_core::CoreError;
 /// let error = CoreError::Gws { exit_code: 2, message: "No credentials".into() };
 /// assert_eq!(error.to_string(), "gws failed (exit 2): No credentials");
 /// assert_eq!(serde_json::to_string(&CoreError::Cancelled).unwrap(), "\"Google sign-in was cancelled\"");
@@ -575,7 +575,7 @@ impl From<std::io::Error> for CoreError {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::CoreError;
+    /// use fraccional_googleworkspace_mcp_core::CoreError;
     /// let error: CoreError = std::io::Error::other("disk full").into();
     /// assert_eq!(error, CoreError::Io("disk full".into()));
     /// ```
@@ -590,7 +590,7 @@ impl From<serde_json::Error> for CoreError {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::CoreError;
+    /// use fraccional_googleworkspace_mcp_core::CoreError;
     /// let error: CoreError = serde_json::from_str::<u8>("x").unwrap_err().into();
     /// assert!(matches!(error, CoreError::Parse(_)));
     /// ```
@@ -605,7 +605,7 @@ impl Serialize for CoreError {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::CoreError;
+    /// use fraccional_googleworkspace_mcp_core::CoreError;
     /// assert_eq!(serde_json::to_string(&CoreError::Io("x".into())).unwrap(), "\"file error: x\"");
     /// ```
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

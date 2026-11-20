@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use haulmer_googleworkspace_mcp_core::gws_env::write_marker;
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner, HttpRequest};
-use haulmer_googleworkspace_mcp_core::{BusinessConnector, Core, CoreError, HttpResponse, Paths};
+use fraccional_googleworkspace_mcp_core::gws_env::write_marker;
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner, HttpRequest};
+use fraccional_googleworkspace_mcp_core::{
+    BusinessConnector, Core, CoreError, HttpResponse, Paths,
+};
 use tempfile::TempDir;
 
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
@@ -53,12 +55,12 @@ fn youtube_channel_refreshes_gws_credentials_and_uses_bearer_auth() {
     );
     fixture.http.on(
         YOUTUBE_URL,
-        HttpResponse::ok(r#"{"items":[{"snippet":{"title":"Haulmer"}}]}"#),
+        HttpResponse::ok(r#"{"items":[{"snippet":{"title":"Fraccional"}}]}"#),
     );
 
     let channel = fixture.core.youtube_channel().unwrap();
 
-    assert_eq!(channel["items"][0]["snippet"]["title"], "Haulmer");
+    assert_eq!(channel["items"][0]["snippet"]["title"], "Fraccional");
     assert!(fixture.http.requests().iter().any(|request| matches!(
         request,
         HttpRequest::PostForm { url, form }

@@ -2,8 +2,8 @@
 
 use std::io::{Cursor, Read};
 
-use haulmer_googleworkspace_mcp_core::CoreError;
-use haulmer_googleworkspace_mcp_core::mcp_extension::mcp_extension;
+use fraccional_googleworkspace_mcp_core::CoreError;
+use fraccional_googleworkspace_mcp_core::mcp_extension::mcp_extension;
 use serde_json::{Value, json};
 
 const MAC_EXE: &str = "/Applications/fraccional-googleworkspace-mcp.app/Contents/MacOS/fraccional-googleworkspace-mcp";
@@ -76,7 +76,7 @@ fn the_manifest_points_at_the_installed_app() {
     assert_eq!(manifest["server"]["entry_point"], "README.md");
     assert_eq!(manifest["server"]["mcp_config"]["command"], MAC_EXE);
     assert_eq!(manifest["server"]["mcp_config"]["args"], json!(["mcp"]));
-    assert_eq!(manifest["author"], json!({"name": "Haulmer"}));
+    assert_eq!(manifest["author"], json!({"name": "Fraccional"}));
     assert_eq!(
         manifest["compatibility"]["platforms"],
         json!(["darwin", "win32"])
@@ -98,12 +98,13 @@ fn the_manifest_lists_the_tools_in_spanish() {
         [
             "gws",
             "youtube_channel",
+            "business_request",
             "status",
             "open_fraccional_googleworkspace_mcp"
         ]
     );
     assert!(
-        manifest["tools"][2]["description"]
+        manifest["tools"][3]["description"]
             .as_str()
             .unwrap()
             .starts_with("Muestra la cuenta conectada")
@@ -115,11 +116,11 @@ fn the_long_description_names_the_domain_and_links_the_gws_cli() {
     let manifest = manifest(MAC_EXE);
 
     let long = manifest["long_description"].as_str().unwrap();
-    assert!(long.contains("@haulmer.com"));
+    assert!(long.contains("@fraccional.com"));
     assert!(
         long.contains("[github.com/googleworkspace/cli](https://github.com/googleworkspace/cli)")
     );
-    assert!(long.starts_with("Conecta Claude con tu Google Workspace de Haulmer"));
+    assert!(long.starts_with("Conecta Claude con tu Google Workspace de Fraccional"));
     assert!(long.contains("\n\n**Qué le puedes pedir**\n- "));
     assert!(long.ends_with("fijada en la v0.22.5."));
 }
@@ -136,11 +137,11 @@ fn a_windows_exe_suffix_is_stripped_from_the_command() {
 
 #[test]
 fn the_exe_suffix_is_stripped_in_any_case() {
-    let manifest = manifest(r"C:\Apps\Haulmer-Connect.EXE");
+    let manifest = manifest(r"C:\Apps\Fraccional-Connect.EXE");
 
     assert_eq!(
         manifest["server"]["mcp_config"]["command"],
-        r"C:\Apps\Haulmer-Connect"
+        r"C:\Apps\Fraccional-Connect"
     );
 }
 

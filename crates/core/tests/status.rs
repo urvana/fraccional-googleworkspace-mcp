@@ -3,9 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use haulmer_googleworkspace_mcp_core::gws_env::write_marker;
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner};
-use haulmer_googleworkspace_mcp_core::{
+use fraccional_googleworkspace_mcp_core::gws_env::write_marker;
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner};
+use fraccional_googleworkspace_mcp_core::{
     Core, CoreError, KeyStorage, Level, Paths, Selection, Service,
 };
 use tempfile::TempDir;
@@ -54,7 +54,7 @@ fn default_dir(s: &Setup) -> PathBuf {
 
 const CONNECTED: &str = r#"{
   "auth_method": "oauth2",
-  "user": "ana@haulmer.com",
+  "user": "ana@fraccional.com",
   "scopes": [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -75,7 +75,7 @@ fn connected_account_reports_email_and_granted_levels() {
     let status = s.core.status().unwrap();
 
     assert!(status.gws_available);
-    assert_eq!(status.account.as_deref(), Some("ana@haulmer.com"));
+    assert_eq!(status.account.as_deref(), Some("ana@fraccional.com"));
     assert_eq!(
         status.granted,
         Selection::from_levels([
@@ -132,7 +132,7 @@ fn no_credentials_in_active_folder_is_not_connected_even_with_adc_fallback() {
 fn custom_folder_status_call_carries_config_dir_and_file_backend() {
     let s = setup();
     with_gws(&s);
-    let custom = s.home.path().join("haulmer-gws");
+    let custom = s.home.path().join("fraccional-gws");
     s.core.set_config_dir(Some(custom.clone())).unwrap();
     credentials_in(&custom, true);
     s.runner.on(&["auth", "status"], FakeReply::ok(CONNECTED));
@@ -155,7 +155,7 @@ fn custom_folder_status_call_carries_config_dir_and_file_backend() {
     assert!(!status.config_dir_is_default);
     assert_eq!(status.key_storage, KeyStorage::Auto);
     assert_eq!(status.resolved_key_storage, KeyStorage::File);
-    assert_eq!(status.account.as_deref(), Some("ana@haulmer.com"));
+    assert_eq!(status.account.as_deref(), Some("ana@fraccional.com"));
 }
 
 #[test]

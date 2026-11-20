@@ -17,7 +17,7 @@ pub const KILLED_EXIT_CODE: i32 = -1;
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::CommandSpec;
+/// use fraccional_googleworkspace_mcp_core::CommandSpec;
 /// let mut command = CommandSpec::new("gws", &["auth", "status"], "/tmp/run");
 /// command.env.insert("NO_COLOR".into(), "1".into());
 /// command.env_remove.insert("GOOGLE_APPLICATION_CREDENTIALS".into());
@@ -42,7 +42,7 @@ impl CommandSpec {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::CommandSpec;
+    /// use fraccional_googleworkspace_mcp_core::CommandSpec;
     /// let command = CommandSpec::new("gws", &["--version"], "/tmp");
     /// assert!(command.env.is_empty());
     /// ```
@@ -62,7 +62,7 @@ impl CommandSpec {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::ProcessOutput;
+/// use fraccional_googleworkspace_mcp_core::ProcessOutput;
 /// let output = ProcessOutput { exit_code: 0, stdout: "gws 0.22.5\n".into(), stderr: String::new() };
 /// assert_eq!(output.stdout.trim(), "gws 0.22.5");
 /// ```
@@ -79,7 +79,7 @@ pub struct ProcessOutput {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::OutputLine;
+/// use fraccional_googleworkspace_mcp_core::OutputLine;
 /// let line = OutputLine::Stderr("  https://accounts.google.com/o/oauth2/auth?...".into());
 /// assert!(matches!(line, OutputLine::Stderr(_)));
 /// ```
@@ -94,7 +94,7 @@ pub enum OutputLine {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner};
+/// use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner};
 /// fn version(runner: &dyn ProcessRunner) -> String {
 ///     let output = runner.run(&CommandSpec::new("gws", &["--version"], ".")).unwrap();
 ///     output.stdout.trim().to_string()
@@ -107,7 +107,7 @@ pub trait ProcessRunner: Send + Sync {
     /// # Example
     ///
     /// ```no_run
-    /// use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
+    /// use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
     /// let output = SystemRunner.run(&CommandSpec::new("gws", &["auth", "status"], ".")).unwrap();
     /// println!("{}", output.exit_code);
     /// ```
@@ -118,7 +118,7 @@ pub trait ProcessRunner: Send + Sync {
     /// # Example
     ///
     /// ```no_run
-    /// use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
+    /// use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
     /// let mut login = SystemRunner.spawn(&CommandSpec::new("gws", &["auth", "login"], ".")).unwrap();
     /// while let Some(line) = login.next_line() {
     ///     println!("{line:?}");
@@ -133,7 +133,7 @@ pub trait ProcessRunner: Send + Sync {
 /// # Example
 ///
 /// ```no_run
-/// use haulmer_googleworkspace_mcp_core::{CommandSpec, OutputLine, ProcessRunner, SystemRunner};
+/// use fraccional_googleworkspace_mcp_core::{CommandSpec, OutputLine, ProcessRunner, SystemRunner};
 /// let mut process = SystemRunner.spawn(&CommandSpec::new("gws", &["auth", "login"], ".")).unwrap();
 /// let killer = process.killer(); // hand this to another thread to cancel
 /// while let Some(OutputLine::Stderr(line) | OutputLine::Stdout(line)) = process.next_line() {
@@ -147,7 +147,7 @@ pub trait RunningProcess: Send {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
+    /// # use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
     /// # let mut process = SystemRunner.spawn(&CommandSpec::new("gws", &[], ".")).unwrap();
     /// let first = process.next_line();
     /// ```
@@ -158,7 +158,7 @@ pub trait RunningProcess: Send {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
+    /// # use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
     /// # let process = SystemRunner.spawn(&CommandSpec::new("gws", &[], ".")).unwrap();
     /// let killer = process.killer();
     /// std::thread::spawn(move || killer.kill());
@@ -170,7 +170,7 @@ pub trait RunningProcess: Send {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
+    /// # use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
     /// # let mut process = SystemRunner.spawn(&CommandSpec::new("gws", &[], ".")).unwrap();
     /// let exit_code = process.wait().unwrap();
     /// ```
@@ -182,7 +182,7 @@ pub trait RunningProcess: Send {
 /// # Example
 ///
 /// ```no_run
-/// # use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
+/// # use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
 /// # let process = SystemRunner.spawn(&CommandSpec::new("gws", &[], ".")).unwrap();
 /// process.killer().kill();
 /// ```
@@ -192,7 +192,7 @@ pub trait ProcessKiller: Send + Sync {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
+    /// # use fraccional_googleworkspace_mcp_core::{CommandSpec, ProcessRunner, SystemRunner};
     /// # let process = SystemRunner.spawn(&CommandSpec::new("gws", &[], ".")).unwrap();
     /// process.killer().kill();
     /// ```
@@ -204,7 +204,7 @@ pub trait ProcessKiller: Send + Sync {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::HttpResponse;
+/// use fraccional_googleworkspace_mcp_core::HttpResponse;
 /// let response = HttpResponse::ok("hello");
 /// assert_eq!((response.status, response.body.as_slice()), (200, b"hello".as_slice()));
 /// ```
@@ -220,7 +220,7 @@ impl HttpResponse {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::HttpResponse;
+    /// use fraccional_googleworkspace_mcp_core::HttpResponse;
     /// assert_eq!(HttpResponse::new(400, "bad").status, 400);
     /// ```
     pub fn new(status: u16, body: impl Into<Vec<u8>>) -> Self {
@@ -235,7 +235,7 @@ impl HttpResponse {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::HttpResponse;
+    /// use fraccional_googleworkspace_mcp_core::HttpResponse;
     /// assert_eq!(HttpResponse::ok(vec![1, 2]).status, 200);
     /// ```
     pub fn ok(body: impl Into<Vec<u8>>) -> Self {
@@ -250,7 +250,7 @@ impl HttpResponse {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::HttpClient;
+/// use fraccional_googleworkspace_mcp_core::HttpClient;
 /// fn revoke(http: &dyn HttpClient, token: &str) -> bool {
 ///     let response = http.post_form("https://oauth2.googleapis.com/revoke", &[("token", token)]);
 ///     matches!(response, Ok(response) if response.status == 200)
@@ -262,7 +262,7 @@ pub trait HttpClient: Send + Sync {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{HttpClient, SystemHttp};
+    /// # use fraccional_googleworkspace_mcp_core::{HttpClient, SystemHttp};
     /// let body = SystemHttp::new().get("https://example.com").unwrap().body;
     /// ```
     fn get(&self, url: &str) -> Result<HttpResponse, CoreError>;
@@ -288,7 +288,7 @@ pub trait HttpClient: Send + Sync {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{HttpClient, SystemHttp};
+    /// # use fraccional_googleworkspace_mcp_core::{HttpClient, SystemHttp};
     /// let response = SystemHttp::new().post_form("https://oauth2.googleapis.com/revoke", &[("token", "1//abc")]).unwrap();
     /// ```
     fn post_form(&self, url: &str, form: &[(&str, &str)]) -> Result<HttpResponse, CoreError>;

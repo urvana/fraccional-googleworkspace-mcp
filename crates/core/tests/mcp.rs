@@ -4,8 +4,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner};
-use haulmer_googleworkspace_mcp_core::{Core, CoreError, Paths, mcp};
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner};
+use fraccional_googleworkspace_mcp_core::{Core, CoreError, Paths, mcp};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
@@ -207,7 +207,8 @@ fn connected(home: &TempDir, runner: &FakeRunner, scopes: &[&str], token_valid: 
             }
         })
         .collect();
-    let status = json!({"user": "ana@haulmer.com", "scopes": scopes, "token_valid": token_valid});
+    let status =
+        json!({"user": "ana@fraccional.com", "scopes": scopes, "token_valid": token_valid});
     runner.on(&["auth", "status"], FakeReply::ok(&status.to_string()));
 }
 
@@ -457,7 +458,7 @@ fn status_lists_the_account_and_the_levels_per_service() {
     let (text, is_error) = tool_text(&serve(&core, &[status_call(1)]));
 
     assert!(!is_error);
-    let expected_head = "Cuenta: ana@haulmer.com\n\
+    let expected_head = "Cuenta: ana@fraccional.com\n\
         Sesión: válida\n\
         gws: instalado\n\
         Con permiso: Gmail (Lectura), Calendar (Lectura y Escritura)\n\
@@ -509,7 +510,7 @@ fn status_with_an_expired_session_says_so() {
 
     assert!(!is_error);
     assert!(
-        text.contains("Cuenta: ana@haulmer.com\nSesión: expirada\n"),
+        text.contains("Cuenta: ana@fraccional.com\nSesión: expirada\n"),
         "{text}"
     );
     assert!(text.contains("Con permiso: Gmail (Lectura)\n"), "{text}");

@@ -9,7 +9,7 @@ use crate::{Core, CoreError, KeyStorage, Paths, Settings};
 /// # Example
 ///
 /// ```
-/// assert_eq!(haulmer_googleworkspace_mcp_core::settings::SETTINGS_FILE, "settings.json");
+/// assert_eq!(fraccional_googleworkspace_mcp_core::settings::SETTINGS_FILE, "settings.json");
 /// ```
 pub const SETTINGS_FILE: &str = "settings.json";
 
@@ -19,7 +19,7 @@ impl Core {
     /// # Example
     ///
     /// ```
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths, Settings};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths, Settings};
     /// # let app_data = tempfile::tempdir().unwrap();
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: app_data.path().into() });
     /// assert_eq!(core.settings().unwrap(), Settings::default());
@@ -39,10 +39,10 @@ impl Core {
     /// # Example
     ///
     /// ```
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// # let app_data = tempfile::tempdir().unwrap();
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: app_data.path().into() });
-    /// core.set_config_dir(Some("/h/.config/haulmer-gws".into())).unwrap();
+    /// core.set_config_dir(Some("/h/.config/fraccional-gws".into())).unwrap();
     /// assert!(!core.settings().unwrap().is_default_config_dir());
     /// ```
     pub fn set_config_dir(&self, dir: Option<PathBuf>) -> Result<(), CoreError> {
@@ -56,7 +56,7 @@ impl Core {
     /// # Example
     ///
     /// ```
-    /// # use haulmer_googleworkspace_mcp_core::{Core, KeyStorage, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, KeyStorage, Paths};
     /// # let app_data = tempfile::tempdir().unwrap();
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: app_data.path().into() });
     /// core.set_key_storage(KeyStorage::File).unwrap();
@@ -84,7 +84,7 @@ impl Settings {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Paths, Settings};
+    /// use fraccional_googleworkspace_mcp_core::{Paths, Settings};
     /// let paths = Paths { home: "/h".into(), app_data: "/a".into() };
     /// assert_eq!(Settings::default().active_config_dir(&paths), std::path::PathBuf::from("/h/.config/gws"));
     /// ```
@@ -100,7 +100,7 @@ impl Settings {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::Settings;
+    /// use fraccional_googleworkspace_mcp_core::Settings;
     /// assert!(Settings::default().is_default_config_dir());
     /// ```
     pub fn is_default_config_dir(&self) -> bool {
@@ -112,7 +112,7 @@ impl Settings {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{KeyStorage, Settings};
+    /// use fraccional_googleworkspace_mcp_core::{KeyStorage, Settings};
     /// assert_eq!(Settings::default().resolved_key_storage(), KeyStorage::Keyring);
     /// let custom = Settings { config_dir: Some("/x".into()), key_storage: KeyStorage::Auto };
     /// assert_eq!(custom.resolved_key_storage(), KeyStorage::File);

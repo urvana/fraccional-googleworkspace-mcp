@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeRunner};
-use haulmer_googleworkspace_mcp_core::{Core, Paths};
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeRunner};
+use fraccional_googleworkspace_mcp_core::{Core, Paths};
 
 #[test]
 fn core_builds_with_fakes_and_temp_dirs_and_is_shareable_across_threads() {

@@ -3,9 +3,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use haulmer_googleworkspace_mcp_core::gws_binary::{RELEASE_URL, release_asset};
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner, HttpRequest};
-use haulmer_googleworkspace_mcp_core::{Core, CoreError, HttpResponse, Paths};
+use fraccional_googleworkspace_mcp_core::gws_binary::{RELEASE_URL, release_asset};
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeReply, FakeRunner, HttpRequest};
+use fraccional_googleworkspace_mcp_core::{Core, CoreError, HttpResponse, Paths};
 use sha2::{Digest, Sha256};
 
 struct Setup {
@@ -352,7 +352,7 @@ fn raw(status: &str, headers: &str, body: &str) -> String {
 
 #[test]
 fn system_http_follows_redirects_and_returns_error_statuses_as_responses() {
-    use haulmer_googleworkspace_mcp_core::{HttpClient, SystemHttp};
+    use fraccional_googleworkspace_mcp_core::{HttpClient, SystemHttp};
     let (base, server) = local_server(vec![
         raw("302 Found", "Location: /asset\r\n", ""),
         raw("200 OK", "", "archive bytes"),
@@ -386,7 +386,7 @@ fn system_http_follows_redirects_and_returns_error_statuses_as_responses() {
 
 #[test]
 fn system_http_without_a_server_is_an_http_error() {
-    use haulmer_googleworkspace_mcp_core::{HttpClient, SystemHttp};
+    use fraccional_googleworkspace_mcp_core::{HttpClient, SystemHttp};
     let port = std::net::TcpListener::bind("127.0.0.1:0")
         .unwrap()
         .local_addr()

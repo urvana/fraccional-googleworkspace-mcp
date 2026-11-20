@@ -27,8 +27,8 @@
 //! # Example
 //!
 //! ```no_run
-//! use haulmer_googleworkspace_mcp_core::{Core, Paths};
-//! let core = Core::system(Paths { home: "/home/ana".into(), app_data: "/home/ana/.haulmer".into() });
+//! use fraccional_googleworkspace_mcp_core::{Core, Paths};
+//! let core = Core::system(Paths { home: "/home/ana".into(), app_data: "/home/ana/.fraccional".into() });
 //! let status = core.status();
 //! ```
 
@@ -75,8 +75,8 @@ pub use types::{
 ///
 /// ```
 /// use std::sync::Arc;
-/// use haulmer_googleworkspace_mcp_core::{Core, Paths, SystemHttp, SystemRunner};
-/// let paths = Paths { home: "/home/ana".into(), app_data: "/tmp/haulmer".into() };
+/// use fraccional_googleworkspace_mcp_core::{Core, Paths, SystemHttp, SystemRunner};
+/// let paths = Paths { home: "/home/ana".into(), app_data: "/tmp/fraccional".into() };
 /// let core = Core::new(paths, Arc::new(SystemRunner), Arc::new(SystemHttp::new()));
 /// assert_eq!(core.paths().home, std::path::PathBuf::from("/home/ana"));
 /// ```
@@ -104,8 +104,8 @@ impl Core {
     ///
     /// ```
     /// use std::sync::Arc;
-    /// use haulmer_googleworkspace_mcp_core::{Core, Paths, SystemHttp, SystemRunner};
-    /// let paths = Paths { home: "/home/ana".into(), app_data: "/tmp/haulmer".into() };
+    /// use fraccional_googleworkspace_mcp_core::{Core, Paths, SystemHttp, SystemRunner};
+    /// let paths = Paths { home: "/home/ana".into(), app_data: "/tmp/fraccional".into() };
     /// let core = Core::new(paths, Arc::new(SystemRunner), Arc::new(SystemHttp::new()));
     /// ```
     pub fn new(paths: Paths, runner: Arc<dyn ProcessRunner>, http: Arc<dyn HttpClient>) -> Self {
@@ -124,7 +124,7 @@ impl Core {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() })
     ///     .with_skills_sha256("0000000000000000000000000000000000000000000000000000000000000000");
     /// ```
@@ -138,8 +138,8 @@ impl Core {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Core, Paths};
-    /// let core = Core::system(Paths { home: "/home/ana".into(), app_data: "/tmp/haulmer".into() });
+    /// use fraccional_googleworkspace_mcp_core::{Core, Paths};
+    /// let core = Core::system(Paths { home: "/home/ana".into(), app_data: "/tmp/fraccional".into() });
     /// ```
     pub fn system(paths: Paths) -> Self {
         Self::new(paths, Arc::new(SystemRunner), Arc::new(SystemHttp::new()))
@@ -150,8 +150,8 @@ impl Core {
     /// # Example
     ///
     /// ```
-    /// use haulmer_googleworkspace_mcp_core::{Core, Paths};
-    /// let paths = Paths { home: "/home/ana".into(), app_data: "/tmp/haulmer".into() };
+    /// use fraccional_googleworkspace_mcp_core::{Core, Paths};
+    /// let paths = Paths { home: "/home/ana".into(), app_data: "/tmp/fraccional".into() };
     /// assert_eq!(Core::system(paths.clone()).paths(), &paths);
     /// ```
     pub fn paths(&self) -> &Paths {

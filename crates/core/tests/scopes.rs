@@ -1,7 +1,7 @@
 //! Scope catalogue tests.
 
-use haulmer_googleworkspace_mcp_core::scopes;
-use haulmer_googleworkspace_mcp_core::{
+use fraccional_googleworkspace_mcp_core::scopes;
+use fraccional_googleworkspace_mcp_core::{
     BusinessConnector, BusinessSelection, Level, Selection, Service,
 };
 
@@ -498,7 +498,7 @@ fn every_business_connector_maps_read_and_full_access_scopes() {
 }
 
 fn sorted_business_scopes(selection: &BusinessSelection) -> Vec<String> {
-    let mut scopes = haulmer_googleworkspace_mcp_core::scopes::business_scopes_for(selection);
+    let mut scopes = fraccional_googleworkspace_mcp_core::scopes::business_scopes_for(selection);
     scopes.sort();
     scopes
 }

@@ -43,7 +43,7 @@ import InstallWindow from "./windows/InstallWindow";
 import SkillsWindow from "./windows/SkillsWindow";
 
 /** The one action running right now; controls stay disabled while one runs. */
-type Busy = "save" | "revoke" | "update" | null;
+type Busy = "save" | "revoke" | "update" | "refresh" | null;
 
 /** Feedback shown after an action. */
 type Notice = { kind: "success" | "info" | "error"; text: string } | null;
@@ -351,6 +351,21 @@ export default function App() {
   }
 
   /**
+   * Re-reads the token's effective permissions and resets the selection to them.
+   *
+   * @example
+   * await handleRefresh();
+   */
+  async function handleRefresh() {
+    setBusy("refresh");
+    try {
+      await loadAll();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /**
    * Reloads only the status (after Revoke all or an Advanced change).
    *
    * @example
@@ -651,15 +666,25 @@ export default function App() {
         )}
 
         <header>
-          <div className="flex items-center gap-3">
-            <img
-              src={fraccionalIsotipo}
-              alt="Fraccional"
-              className="h-9 w-9 rounded-lg bg-zinc-900 p-1.5"
-            />
-            <h1 className="text-xl font-semibold">
-              fraccional-googleworkspace-mcp
-            </h1>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <img
+                src={fraccionalIsotipo}
+                alt="Fraccional"
+                className="h-9 w-9 rounded-lg bg-zinc-900 p-1.5"
+              />
+              <h1 className="text-xl font-semibold">
+                fraccional-googleworkspace-mcp
+              </h1>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 text-xs text-slate-500 underline-offset-4 hover:text-slate-900 hover:underline disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              disabled={disabled}
+              onClick={handleRefresh}
+            >
+              {busy === "refresh" ? "Refrescando…" : "Refrescar"}
+            </button>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">
             Conecta tus agentes de IA a Google Workspace.

@@ -19,7 +19,7 @@ impl Core {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{scopes, Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{scopes, Core, Paths};
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() });
     /// let outcome = core.save(&scopes::default_selection(), false, &|url| println!("open {url}"));
     /// ```
@@ -89,7 +89,7 @@ impl Core {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() });
     /// core.cancel_login().unwrap();
     /// ```

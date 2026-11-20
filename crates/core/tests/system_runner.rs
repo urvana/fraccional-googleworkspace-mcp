@@ -1,7 +1,7 @@
 //! The real process runner against real programs (Unix shell).
 #![cfg(unix)]
 
-use haulmer_googleworkspace_mcp_core::{
+use fraccional_googleworkspace_mcp_core::{
     CommandSpec, CoreError, KILLED_EXIT_CODE, OutputLine, ProcessRunner, SystemRunner,
 };
 

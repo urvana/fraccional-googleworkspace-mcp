@@ -3,8 +3,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeRunner};
-use haulmer_googleworkspace_mcp_core::{Core, KeyStorage, Paths, Settings};
+use fraccional_googleworkspace_mcp_core::testing::{FakeHttp, FakeRunner};
+use fraccional_googleworkspace_mcp_core::{Core, KeyStorage, Paths, Settings};
 use tempfile::TempDir;
 
 /// A core over a temp home and temp app data.
@@ -32,7 +32,7 @@ fn settings_default_when_nothing_was_saved() {
 #[test]
 fn settings_persist_across_core_instances() {
     let (home, app_data) = (TempDir::new().unwrap(), TempDir::new().unwrap());
-    let custom = PathBuf::from("/somewhere/haulmer-gws");
+    let custom = PathBuf::from("/somewhere/fraccional-gws");
     let core = core_in(&home, &app_data);
     core.set_config_dir(Some(custom.clone())).unwrap();
     core.set_key_storage(KeyStorage::Keyring).unwrap();

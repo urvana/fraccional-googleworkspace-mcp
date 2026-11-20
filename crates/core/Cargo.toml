@@ -1,12 +1,12 @@
 [package]
-name = "haulmer-googleworkspace-mcp-core"
-description = "Core behaviour of haulmer-googleworkspace-mcp: selection, gws login, status, revoke and skills."
+name = "fraccional-googleworkspace-mcp-core"
+description = "Core behaviour of fraccional-googleworkspace-mcp: selection, gws login, status, revoke and skills."
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
 
 [lib]
-name = "haulmer_googleworkspace_mcp_core"
+name = "fraccional_googleworkspace_mcp_core"
 
 [features]
 # Exposes the `testing` module (FakeRunner, FakeHttp) to integration tests and other crates.
@@ -24,5 +24,5 @@ zip = { version = "9.6.1", default-features = false, features = ["deflate-flate2
 
 [dev-dependencies]
 # Self dev-dependency: turns on the `testing` feature for this crate's integration tests.
-haulmer-googleworkspace-mcp-core = { path = ".", features = ["testing"] }
+fraccional-googleworkspace-mcp-core = { path = ".", features = ["testing"] }
 tempfile = "3.27.0"

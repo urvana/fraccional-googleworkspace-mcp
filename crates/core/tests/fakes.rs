@@ -3,10 +3,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use haulmer_googleworkspace_mcp_core::testing::{
+use fraccional_googleworkspace_mcp_core::testing::{
     CallKind, FakeHttp, FakeReply, FakeRunner, HttpRequest,
 };
-use haulmer_googleworkspace_mcp_core::{
+use fraccional_googleworkspace_mcp_core::{
     CommandSpec, CoreError, HttpClient, HttpResponse, KILLED_EXIT_CODE, OutputLine, ProcessRunner,
 };
 
@@ -21,13 +21,13 @@ fn runner_returns_the_canned_reply_and_records_the_whole_command() {
     let runner = FakeRunner::new();
     runner.on(
         &["auth", "status"],
-        FakeReply::ok(r#"{"user":"ana@haulmer.com"}"#),
+        FakeReply::ok(r#"{"user":"ana@fraccional.com"}"#),
     );
 
     let output = runner.run(&gws(&["auth", "status"])).unwrap();
 
     assert_eq!(output.exit_code, 0);
-    assert_eq!(output.stdout, r#"{"user":"ana@haulmer.com"}"#);
+    assert_eq!(output.stdout, r#"{"user":"ana@fraccional.com"}"#);
     let calls = runner.calls();
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].kind, CallKind::Run);

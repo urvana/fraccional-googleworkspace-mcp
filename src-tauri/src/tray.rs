@@ -1,4 +1,4 @@
-use haulmer_googleworkspace_mcp_core::{BusinessConnector, Core, Level, Service, Status};
+use fraccional_googleworkspace_mcp_core::{BusinessConnector, Core, Level, Service, Status};
 use tauri::{
     AppHandle,
     image::Image,
@@ -248,7 +248,7 @@ fn business_label(connector: BusinessConnector) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use haulmer_googleworkspace_mcp_core::{BusinessSelection, KeyStorage, Selection, Status};
+    use fraccional_googleworkspace_mcp_core::{BusinessSelection, KeyStorage, Selection, Status};
 
     use super::{TrayState, presentation};
 

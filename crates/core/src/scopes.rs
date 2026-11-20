@@ -13,7 +13,7 @@ use crate::{
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::scopes::SCOPE_PREFIX;
+/// use fraccional_googleworkspace_mcp_core::scopes::SCOPE_PREFIX;
 /// assert_eq!(format!("{SCOPE_PREFIX}drive"), "https://www.googleapis.com/auth/drive");
 /// ```
 pub const SCOPE_PREFIX: &str = "https://www.googleapis.com/auth/";
@@ -24,7 +24,7 @@ pub const SCOPE_PREFIX: &str = "https://www.googleapis.com/auth/";
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{scopes, Level, Service};
+/// use fraccional_googleworkspace_mcp_core::{scopes, Level, Service};
 /// assert!(scopes::default_selection().contains(Service::Gmail, Level::Read));
 /// ```
 pub fn default_selection() -> Selection {
@@ -49,7 +49,7 @@ fn write_supported(service: Service) -> bool {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
+/// use fraccional_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
 /// let normalized = scopes::normalize(&Selection::from_levels([(Service::Gmail, Level::Write)]));
 /// assert!(normalized.contains(Service::Gmail, Level::Read));
 /// ```
@@ -66,7 +66,7 @@ pub fn normalize(selection: &Selection) -> Selection {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
+/// use fraccional_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
 /// let urls = scopes::scopes_for(&Selection::from_levels([(Service::Tasks, Level::Read)]));
 /// assert_eq!(urls, ["https://www.googleapis.com/auth/tasks.readonly"]);
 /// ```
@@ -218,7 +218,7 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
+/// use fraccional_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
 /// let arg = scopes::scopes_arg(&Selection::from_levels([(Service::Calendar, Level::Read)]));
 /// assert_eq!(arg, "https://www.googleapis.com/auth/calendar.readonly");
 /// ```
@@ -306,7 +306,7 @@ pub fn business_selection_from_scopes(granted: &[String]) -> BusinessSelection {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{scopes, Level, Service};
+/// use fraccional_googleworkspace_mcp_core::{scopes, Level, Service};
 /// let granted = scopes::selection_from_scopes(&["https://www.googleapis.com/auth/tasks.readonly".to_string()]);
 /// assert!(granted.contains(Service::Tasks, Level::Read));
 /// ```
@@ -338,7 +338,7 @@ fn has_scope(granted: &[String], scope: &str) -> bool {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::scopes;
+/// use fraccional_googleworkspace_mcp_core::scopes;
 /// assert_eq!(scopes::catalogue().len(), 15);
 /// ```
 pub fn catalogue() -> Vec<ServiceInfo> {
@@ -352,7 +352,7 @@ pub fn catalogue() -> Vec<ServiceInfo> {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
+/// use fraccional_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
 /// let granted = Selection::from_levels([(Service::AdminReports, Level::Read)]);
 /// let catalogue = scopes::catalogue_for(&granted);
 /// assert!(catalogue.iter().find(|info| info.service == Service::AdminReports).unwrap().enabled);
@@ -470,7 +470,7 @@ pub fn catalogue_for(granted: &Selection) -> Vec<ServiceInfo> {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::scopes;
+/// use fraccional_googleworkspace_mcp_core::scopes;
 /// assert_eq!(scopes::business_catalogue().len(), 6);
 /// ```
 pub fn business_catalogue() -> Vec<BusinessConnectorInfo> {

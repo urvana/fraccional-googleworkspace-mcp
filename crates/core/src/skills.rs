@@ -14,7 +14,7 @@ use crate::{Core, CoreError, Selection, Service};
 /// # Example
 ///
 /// ```
-/// assert_eq!(haulmer_googleworkspace_mcp_core::skills::SKILLS_COMMIT.len(), 40);
+/// assert_eq!(fraccional_googleworkspace_mcp_core::skills::SKILLS_COMMIT.len(), 40);
 /// ```
 pub const SKILLS_COMMIT: &str = "705fb0ecac6f4249679958f6325b809b63fdde17";
 
@@ -23,7 +23,7 @@ pub const SKILLS_COMMIT: &str = "705fb0ecac6f4249679958f6325b809b63fdde17";
 /// # Example
 ///
 /// ```
-/// assert!(haulmer_googleworkspace_mcp_core::skills::SKILLS_REPO_URL.ends_with("/tree/v0.22.5"));
+/// assert!(fraccional_googleworkspace_mcp_core::skills::SKILLS_REPO_URL.ends_with("/tree/v0.22.5"));
 /// ```
 pub const SKILLS_REPO_URL: &str = "https://github.com/googleworkspace/cli/tree/v0.22.5";
 
@@ -32,7 +32,7 @@ pub const SKILLS_REPO_URL: &str = "https://github.com/googleworkspace/cli/tree/v
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::skills::{SKILLS_COMMIT, SKILLS_TARBALL_URL};
+/// use fraccional_googleworkspace_mcp_core::skills::{SKILLS_COMMIT, SKILLS_TARBALL_URL};
 /// assert!(SKILLS_TARBALL_URL.ends_with(&format!("{SKILLS_COMMIT}.tar.gz")));
 /// ```
 pub const SKILLS_TARBALL_URL: &str = "https://github.com/googleworkspace/cli/archive/705fb0ecac6f4249679958f6325b809b63fdde17.tar.gz";
@@ -43,7 +43,7 @@ pub const SKILLS_TARBALL_URL: &str = "https://github.com/googleworkspace/cli/arc
 /// # Example
 ///
 /// ```
-/// assert_eq!(haulmer_googleworkspace_mcp_core::skills::SKILLS_TARBALL_SHA256.len(), 64);
+/// assert_eq!(fraccional_googleworkspace_mcp_core::skills::SKILLS_TARBALL_SHA256.len(), 64);
 /// ```
 pub const SKILLS_TARBALL_SHA256: &str =
     "38a27bae67755c101da1278154ca4b9bf9f7fdccd7a5a1db916c2ff880bfa9fd";
@@ -194,7 +194,7 @@ impl Core {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::skills::skills_add_command;
+/// use fraccional_googleworkspace_mcp_core::skills::skills_add_command;
 /// assert!(skills_add_command().starts_with(
 ///     "npx -y skills add https://github.com/googleworkspace/cli/tree/v0.22.5 -g -y -s gws-shared gws-drive "
 /// ));

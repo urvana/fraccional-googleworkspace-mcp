@@ -1,10 +1,10 @@
 //! Tauri shell of fraccional-googleworkspace-mcp: one window, IPC commands only, no local HTTP server.
-//! Every command calls the matching `haulmer_googleworkspace_mcp_core::Core` method 1:1, with no logic.
+//! Every command calls the matching `fraccional_googleworkspace_mcp_core::Core` method 1:1, with no logic.
 
 use std::path::PathBuf;
 use std::process::Stdio;
 
-use haulmer_googleworkspace_mcp_core::{
+use fraccional_googleworkspace_mcp_core::{
     BusinessConnectorInfo, BusinessSelection, Core, CoreError, KeyStorage, Paths, RevokeOutcome,
     SaveOutcome, Selection, ServiceInfo, Status, mcp, mcp_clients, mcp_extension, scopes, skills,
 };
@@ -12,6 +12,8 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, image::Image, tray::TrayIconBuilder};
 use tauri_plugin_opener::OpenerExt;
 
+mod notify;
+use notify::{notify, revoke_text, save_text};
 mod tray;
 use tray::{TrayState, refresh_tray_menu, set_tray_menu};
 
@@ -29,15 +31,15 @@ fn mcp_paths(home: PathBuf, data_dir: PathBuf) -> Paths {
     }
 }
 
-fn configure_fraccional_gws(core: &Core, home: &std::path::Path) -> Result<(), CoreError> {
-    if core.settings()?.is_default_config_dir() {
-        core.set_config_dir(Some(home.join(".config").join(CONFIG_DIR_NAME)))?;
-    }
-    Ok(())
-}
-
 fn default_config_dir(home: &std::path::Path) -> PathBuf {
     home.join(".config").join(CONFIG_DIR_NAME)
+}
+
+fn configure_fraccional_gws(core: &Core) -> Result<(), CoreError> {
+    if core.settings()?.is_default_config_dir() {
+        core.set_config_dir(Some(default_config_dir(&core.paths().home)))?;
+    }
+    Ok(())
 }
 
 /// `Core::status`.
@@ -88,11 +90,20 @@ fn save(
     );
     match &result {
         Ok(SaveOutcome::Connected(status)) => {
-            set_tray_menu(&app, TrayState::Status(status.clone()));
-            show_refreshed_window(&app, "install");
+            set_tray_menu(&app, TrayState::Status(status.clone()))
         }
         Ok(SaveOutcome::NeedsReplaceConfirmation) => refresh_tray_menu(&app, &core),
         Err(_) => set_tray_menu(&app, TrayState::Error),
+    }
+    let removed_everything = selection.is_empty()
+        && business_selection
+            .as_ref()
+            .is_none_or(|business| business.is_empty());
+    if let Some(text) = save_text(&result, removed_everything) {
+        notify(&app, &text);
+    }
+    if matches!(result, Ok(SaveOutcome::Connected(_))) {
+        show_refreshed_window(&app, "install");
     }
     result
 }
@@ -124,6 +135,9 @@ fn revoke_all(
 ) -> Result<RevokeOutcome, CoreError> {
     let result = core.revoke_all(confirm_foreign);
     refresh_tray_menu(&app, &core);
+    if let Some(text) = revoke_text(&result) {
+        notify(&app, &text);
+    }
     result
 }
 
@@ -139,7 +153,7 @@ fn export_skills_zip(core: State<'_, Core>, path: PathBuf) -> Result<(), CoreErr
 /// # Example
 ///
 /// ```js
-/// await invoke("set_config_dir", { dir: "/Users/ana/.config/haulmer-gws" });
+/// await invoke("set_config_dir", { dir: "/Users/ana/.config/fraccional-gws" });
 /// ```
 #[tauri::command]
 fn set_config_dir(core: State<'_, Core>, dir: Option<PathBuf>) -> Result<(), CoreError> {
@@ -284,6 +298,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
@@ -305,7 +320,7 @@ pub fn run() {
                 app_data: app.path().app_data_dir()?,
             };
             let core = Core::system(paths);
-            configure_fraccional_gws(&core, &core.paths().home)?;
+            configure_fraccional_gws(&core)?;
             app.manage(core);
             refresh_tray_menu(app.handle(), &app.state::<Core>());
             #[cfg(target_os = "macos")]
@@ -412,7 +427,7 @@ fn open_app_detached() -> Result<(), CoreError> {
 }
 
 /// Runs the MCP server on stdin/stdout (`fraccional-googleworkspace-mcp mcp`), with no window. Uses the same
-/// folders as the app: `home` and `<data dir>/com.haulmer.googleworkspace.mcp` as Tauri's `app_data_dir`
+/// folders as the app: `home` and `<data dir>/com.fraccional.googleworkspace.mcp` as Tauri's `app_data_dir`
 /// (`dirs::data_dir`: macOS `~/Library/Application Support`, Windows `%APPDATA%`, Linux
 /// `$XDG_DATA_HOME` or `~/.local/share`).
 ///
@@ -435,8 +450,8 @@ pub fn run_mcp() -> Result<(), CoreError> {
             _ => data_dir = home.join(".local/share"),
         }
     }
-    let core = Core::system(mcp_paths(home.clone(), data_dir));
-    configure_fraccional_gws(&core, &home)?;
+    let core = Core::system(mcp_paths(home, data_dir));
+    configure_fraccional_gws(&core)?;
     mcp::serve(
         &core,
         &open_app_detached,

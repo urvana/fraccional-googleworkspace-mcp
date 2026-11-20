@@ -10,7 +10,7 @@ use crate::{CommandSpec, Core, CoreError};
 /// # Example
 ///
 /// ```
-/// assert_eq!(haulmer_googleworkspace_mcp_core::gws_env::MARKER_FILE, "fraccional-googleworkspace-mcp.json");
+/// assert_eq!(fraccional_googleworkspace_mcp_core::gws_env::MARKER_FILE, "fraccional-googleworkspace-mcp.json");
 /// ```
 pub const MARKER_FILE: &str = "fraccional-googleworkspace-mcp.json";
 
@@ -30,7 +30,7 @@ impl Core {
     /// # Example
     ///
     /// ```
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// # let app_data = tempfile::tempdir().unwrap();
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: app_data.path().into() });
     /// let command = core.gws_command("gws".as_ref(), &["auth", "status"]).unwrap();
@@ -75,7 +75,7 @@ impl Core {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::gws_env::credentials_exist;
+/// use fraccional_googleworkspace_mcp_core::gws_env::credentials_exist;
 /// assert!(!credentials_exist("/nonexistent".as_ref()));
 /// ```
 pub fn credentials_exist(config_dir: &Path) -> bool {
@@ -89,7 +89,7 @@ pub fn credentials_exist(config_dir: &Path) -> bool {
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::gws_env::foreign_credentials;
+/// use fraccional_googleworkspace_mcp_core::gws_env::foreign_credentials;
 /// assert!(!foreign_credentials("/nonexistent".as_ref()));
 /// ```
 pub fn foreign_credentials(config_dir: &Path) -> bool {
@@ -102,8 +102,8 @@ pub fn foreign_credentials(config_dir: &Path) -> bool {
 ///
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
-/// haulmer_googleworkspace_mcp_core::gws_env::write_marker(dir.path()).unwrap();
-/// assert!(dir.path().join(haulmer_googleworkspace_mcp_core::gws_env::MARKER_FILE).is_file());
+/// fraccional_googleworkspace_mcp_core::gws_env::write_marker(dir.path()).unwrap();
+/// assert!(dir.path().join(fraccional_googleworkspace_mcp_core::gws_env::MARKER_FILE).is_file());
 /// ```
 pub fn write_marker(config_dir: &Path) -> Result<(), CoreError> {
     std::fs::create_dir_all(config_dir)?;
@@ -120,7 +120,7 @@ pub fn write_marker(config_dir: &Path) -> Result<(), CoreError> {
 ///
 /// ```
 /// let dir = tempfile::tempdir().unwrap();
-/// haulmer_googleworkspace_mcp_core::gws_env::remove_marker(dir.path()).unwrap();
+/// fraccional_googleworkspace_mcp_core::gws_env::remove_marker(dir.path()).unwrap();
 /// ```
 pub fn remove_marker(config_dir: &Path) -> Result<(), CoreError> {
     match std::fs::remove_file(config_dir.join(MARKER_FILE)) {

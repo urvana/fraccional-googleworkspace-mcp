@@ -10,7 +10,7 @@ use crate::{Core, CoreError, RevokeOutcome};
 /// # Example
 ///
 /// ```
-/// assert!(haulmer_googleworkspace_mcp_core::revoke::REVOKE_URL.starts_with("https://oauth2.googleapis.com/"));
+/// assert!(fraccional_googleworkspace_mcp_core::revoke::REVOKE_URL.starts_with("https://oauth2.googleapis.com/"));
 /// ```
 pub const REVOKE_URL: &str = "https://oauth2.googleapis.com/revoke";
 
@@ -27,7 +27,7 @@ impl Core {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths, RevokeOutcome};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths, RevokeOutcome};
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() });
     /// if core.revoke_all(false).unwrap() == RevokeOutcome::NeedsForeignConfirmation {
     ///     // ask the person, then:

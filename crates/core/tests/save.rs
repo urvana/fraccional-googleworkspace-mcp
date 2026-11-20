@@ -3,17 +3,17 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use haulmer_googleworkspace_mcp_core::gws_env::MARKER_FILE;
-use haulmer_googleworkspace_mcp_core::revoke::REVOKE_URL;
-use haulmer_googleworkspace_mcp_core::testing::{CallKind, FakeHttp, FakeReply, FakeRunner};
-use haulmer_googleworkspace_mcp_core::{
+use fraccional_googleworkspace_mcp_core::gws_env::MARKER_FILE;
+use fraccional_googleworkspace_mcp_core::revoke::REVOKE_URL;
+use fraccional_googleworkspace_mcp_core::testing::{CallKind, FakeHttp, FakeReply, FakeRunner};
+use fraccional_googleworkspace_mcp_core::{
     BusinessConnector, BusinessSelection, Core, CoreError, HttpResponse, Level, Paths, SaveOutcome,
     Selection, Service,
 };
 use tempfile::TempDir;
 
 const URL: &str = "https://accounts.google.com/o/oauth2/auth?client_id=x&scope=y";
-const LOGIN_OK: &str = r#"{"status":"success","account":"ana@haulmer.com"}"#;
+const LOGIN_OK: &str = r#"{"status":"success","account":"ana@fraccional.com"}"#;
 const GMAIL_READ: &str = "https://www.googleapis.com/auth/gmail.readonly";
 const CALENDAR_READ: &str = "https://www.googleapis.com/auth/calendar.readonly";
 const YOUTUBE_READ: &str = "https://www.googleapis.com/auth/youtube.readonly";
@@ -31,7 +31,7 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let (home, app_data) = (TempDir::new().unwrap(), TempDir::new().unwrap());
-    let config_dir = home.path().join("haulmer-gws");
+    let config_dir = home.path().join("fraccional-gws");
     let runner = Arc::new(FakeRunner::new());
     let http = Arc::new(FakeHttp::new());
     let paths = Paths {
@@ -47,7 +47,7 @@ fn fixture() -> Fixture {
     runner.on_with(&["auth", "status"], move |_| {
         let scopes = serde_json::to_string(&*reported.lock().unwrap()).unwrap();
         FakeReply::ok(&format!(
-            r#"{{"user":"ana@haulmer.com","token_valid":true,"scopes":{scopes}}}"#
+            r#"{{"user":"ana@fraccional.com","token_valid":true,"scopes":{scopes}}}"#
         ))
     });
     let (logged_in, folder) = (granted.clone(), config_dir.clone());
@@ -126,7 +126,7 @@ fn first_save_logs_in_once_with_the_selected_scopes_and_marks_the_folder() {
     let SaveOutcome::Connected(status) = outcome else {
         panic!("expected Connected, got {outcome:?}");
     };
-    assert_eq!(status.account.as_deref(), Some("ana@haulmer.com"));
+    assert_eq!(status.account.as_deref(), Some("ana@fraccional.com"));
     assert!(status.granted.contains(Service::Gmail, Level::Read));
     assert!(f.config_dir.join(MARKER_FILE).is_file());
     let login_call = f

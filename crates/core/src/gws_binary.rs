@@ -14,7 +14,7 @@ use crate::{Core, CoreError};
 /// # Example
 ///
 /// ```
-/// assert_eq!(haulmer_googleworkspace_mcp_core::gws_binary::GWS_VERSION, "0.22.5");
+/// assert_eq!(fraccional_googleworkspace_mcp_core::gws_binary::GWS_VERSION, "0.22.5");
 /// ```
 pub const GWS_VERSION: &str = "0.22.5";
 
@@ -23,7 +23,7 @@ pub const GWS_VERSION: &str = "0.22.5";
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::gws_binary::RELEASE_URL;
+/// use fraccional_googleworkspace_mcp_core::gws_binary::RELEASE_URL;
 /// assert!(RELEASE_URL.ends_with("/v0.22.5"));
 /// ```
 pub const RELEASE_URL: &str = "https://github.com/googleworkspace/cli/releases/download/v0.22.5";
@@ -37,7 +37,7 @@ const BINARY_NAME: &str = if cfg!(windows) { "gws.exe" } else { "gws" };
 /// # Example
 ///
 /// ```
-/// use haulmer_googleworkspace_mcp_core::gws_binary::release_asset;
+/// use fraccional_googleworkspace_mcp_core::gws_binary::release_asset;
 /// if let Some(asset) = release_asset() {
 ///     assert!(asset.starts_with("google-workspace-cli-"));
 /// }
@@ -64,7 +64,7 @@ impl Core {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() });
     /// let gws = core.find_gws().unwrap(); // Some("gws") or Some("<app_data>/bin/gws") or None
     /// ```
@@ -89,7 +89,7 @@ impl Core {
     /// # Example
     ///
     /// ```no_run
-    /// # use haulmer_googleworkspace_mcp_core::{Core, Paths};
+    /// # use fraccional_googleworkspace_mcp_core::{Core, Paths};
     /// # let core = Core::system(Paths { home: "/h".into(), app_data: "/a".into() });
     /// let gws = core.ensure_gws().unwrap();
     /// ```

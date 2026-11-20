@@ -9,7 +9,7 @@
 //! # Example
 //!
 //! ```
-//! use haulmer_googleworkspace_mcp_core::oauth_client::{CLIENT_ID, CLIENT_SECRET};
+//! use fraccional_googleworkspace_mcp_core::oauth_client::{CLIENT_ID, CLIENT_SECRET};
 //! assert!(CLIENT_ID.ends_with(".apps.googleusercontent.com"));
 //! assert!(!CLIENT_SECRET.is_empty());
 //! ```

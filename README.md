@@ -131,10 +131,11 @@ In Google Cloud Console:
 7. Keep the client ID aligned with
    `crates/core/src/oauth_client.rs`.
 
-The Desktop client ID is included in the application by design. Google treats
-installed apps as public clients: the token exchange uses the client ID and
-PKCE, without a client secret. Do not put the updater private key, GitHub
-tokens or any server credentials in the repo.
+The Desktop client ID and secret are included in the application by design.
+Google treats installed apps as public clients (RFC 8252 §8.5): the secret
+is not confidential, but Google's token endpoint still requires it for Desktop
+clients. Do not put the updater private key, GitHub tokens or any server
+credentials in the repo.
 
 For Google Workspace, the Google Cloud OAuth app must be trusted by the
 organization's admin if the Admin Console requires explicit trust for internal

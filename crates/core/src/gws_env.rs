@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::oauth_client::CLIENT_ID;
+use crate::oauth_client::{CLIENT_ID, CLIENT_SECRET};
 use crate::{CommandSpec, Core, CoreError};
 
 /// Ownership marker written into the config folder after a successful fraccional-googleworkspace-mcp login.
@@ -61,6 +61,7 @@ impl Core {
             settings.resolved_key_storage().backend(),
         );
         set("GOOGLE_WORKSPACE_CLI_CLIENT_ID", CLIENT_ID);
+        set("GOOGLE_WORKSPACE_CLI_CLIENT_SECRET", CLIENT_SECRET);
         set("NO_COLOR", "1");
         command
             .env_remove

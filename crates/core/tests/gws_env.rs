@@ -6,7 +6,7 @@ use std::sync::Arc;
 use haulmer_googleworkspace_mcp_core::gws_env::{
     MARKER_FILE, credentials_exist, foreign_credentials, remove_marker, write_marker,
 };
-use haulmer_googleworkspace_mcp_core::oauth_client::CLIENT_ID;
+use haulmer_googleworkspace_mcp_core::oauth_client::{CLIENT_ID, CLIENT_SECRET};
 use haulmer_googleworkspace_mcp_core::testing::{FakeHttp, FakeRunner};
 use haulmer_googleworkspace_mcp_core::{CommandSpec, Core, KeyStorage, Paths};
 use tempfile::TempDir;
@@ -141,7 +141,7 @@ fn every_command_carries_client_no_color_and_removes_credential_overrides() {
     );
     assert_eq!(
         env(&command, "GOOGLE_WORKSPACE_CLI_CLIENT_SECRET"),
-        None
+        Some(CLIENT_SECRET)
     );
     assert_eq!(env(&command, "NO_COLOR"), Some("1"));
     for removed in [

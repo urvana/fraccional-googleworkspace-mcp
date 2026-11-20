@@ -8,7 +8,7 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::oauth_client::CLIENT_ID;
+use crate::oauth_client::{CLIENT_ID, CLIENT_SECRET};
 use crate::{BusinessConnector, Core, CoreError, Level};
 
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
@@ -189,6 +189,7 @@ impl YoutubeConnector<'_> {
             TOKEN_URL,
             &[
                 ("client_id", CLIENT_ID),
+                ("client_secret", CLIENT_SECRET),
                 ("refresh_token", refresh_token),
                 ("grant_type", "refresh_token"),
             ],

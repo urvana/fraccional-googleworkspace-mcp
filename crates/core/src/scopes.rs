@@ -67,8 +67,8 @@ pub fn normalize(selection: &Selection) -> Selection {
 ///
 /// ```
 /// use haulmer_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
-/// let urls = scopes::scopes_for(&Selection::from_levels([(Service::Drive, Level::Read)]));
-/// assert_eq!(urls, ["https://www.googleapis.com/auth/drive.readonly"]);
+/// let urls = scopes::scopes_for(&Selection::from_levels([(Service::Tasks, Level::Read)]));
+/// assert_eq!(urls, ["https://www.googleapis.com/auth/tasks.readonly"]);
 /// ```
 pub fn scopes_for(selection: &Selection) -> Vec<String> {
     let mut seen = HashSet::new();
@@ -90,9 +90,15 @@ pub fn scopes_for(selection: &Selection) -> Vec<String> {
 /// assert_eq!(level_scopes(Service::Drive, Level::Write), ["drive"]);
 /// ```
 fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
+    // Read: every read-only scope of the service's APIs. Write: every other user-facing scope
+    // that a broader scope does not already cover (e.g. `drive` covers `drive.file`).
     match (service, level) {
         (Service::Gmail, Level::Read) => &["gmail.readonly"],
-        (Service::Gmail, Level::Write) => &["https://mail.google.com/"],
+        (Service::Gmail, Level::Write) => &[
+            "https://mail.google.com/",
+            "gmail.settings.basic",
+            "gmail.settings.sharing",
+        ],
         (Service::Calendar, Level::Read) => &["calendar.readonly"],
         (Service::Calendar, Level::Write) => &["calendar"],
         (Service::Chat, Level::Read) => &[
@@ -101,6 +107,12 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
             "chat.memberships.readonly",
             "chat.messages.reactions.readonly",
             "chat.users.readstate.readonly",
+            "chat.users.sections.readonly",
+            "chat.users.availability.readonly",
+            "chat.spaces.pins.readonly",
+            "chat.customemojis.readonly",
+            "chat.admin.spaces.readonly",
+            "chat.admin.memberships.readonly",
         ],
         (Service::Chat, Level::Write) => &[
             "chat.spaces",
@@ -108,11 +120,21 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
             "chat.messages",
             "chat.messages.reactions",
             "chat.users.readstate",
+            "chat.users.sections",
+            "chat.users.availability",
+            "chat.users.spacesettings",
+            "chat.spaces.pins",
+            "chat.customemojis",
+            "chat.delete",
+            "chat.import",
+            "chat.admin.spaces",
+            "chat.admin.memberships",
+            "chat.admin.delete",
         ],
         (Service::Meet, Level::Read) => &["meetings.space.readonly"],
-        (Service::Meet, Level::Write) => &["meetings.space.created"],
-        (Service::Drive, Level::Read) => &["drive.readonly"],
-        (Service::Drive, Level::Write) => &["drive"],
+        (Service::Meet, Level::Write) => &["meetings.space.created", "meetings.space.settings"],
+        (Service::Drive, Level::Read) => &["drive.readonly", "drive.apps.readonly"],
+        (Service::Drive, Level::Write) => &["drive", "drive.scripts"],
         (Service::Docs, Level::Read) => &["documents.readonly"],
         (Service::Docs, Level::Write) => &["documents"],
         (Service::Sheets, Level::Read) => &["spreadsheets.readonly"],
@@ -120,24 +142,74 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
         (Service::Slides, Level::Read) => &["presentations.readonly"],
         (Service::Slides, Level::Write) => &["presentations"],
         (Service::Forms, Level::Read) => &["forms.body.readonly", "forms.responses.readonly"],
-        (Service::Forms, Level::Write) => &["forms.body", "forms.responses.readonly"],
+        (Service::Forms, Level::Write) => &["forms.body"],
         (Service::Tasks, Level::Read) => &["tasks.readonly"],
         (Service::Tasks, Level::Write) => &["tasks"],
-        (Service::People, Level::Read) => &["contacts.readonly", "directory.readonly"],
-        (Service::People, Level::Write) => &["contacts", "directory.readonly"],
+        (Service::People, Level::Read) => &[
+            "contacts.readonly",
+            "contacts.other.readonly",
+            "directory.readonly",
+            "user.addresses.read",
+            "user.birthday.read",
+            "user.emails.read",
+            "user.gender.read",
+            "user.organization.read",
+            "user.phonenumbers.read",
+        ],
+        (Service::People, Level::Write) => &["contacts"],
         (Service::AdminReports, Level::Read) => &[
             "admin.reports.audit.readonly",
             "admin.reports.usage.readonly",
         ],
         (Service::AdminReports, Level::Write) => &["admin.reports.audit.readonly"],
-        (Service::AdminDirectory, Level::Read) => &["admin.directory.user.readonly"],
-        (Service::AdminDirectory, Level::Write) => &["admin.directory.user"],
-        (Service::AdminGroups, Level::Read) => &["admin.directory.group.readonly"],
+        (Service::AdminDirectory, Level::Read) => &[
+            "admin.directory.user.readonly",
+            "admin.directory.user.alias.readonly",
+            "admin.directory.orgunit.readonly",
+            "admin.directory.domain.readonly",
+            "admin.directory.customer.readonly",
+            "admin.directory.userschema.readonly",
+            "admin.directory.rolemanagement.readonly",
+            "admin.directory.resource.calendar.readonly",
+            "admin.directory.device.mobile.readonly",
+            "admin.directory.device.chromeos.readonly",
+            "admin.chrome.printers.readonly",
+        ],
+        (Service::AdminDirectory, Level::Write) => &[
+            "admin.directory.user",
+            "admin.directory.user.alias",
+            "admin.directory.user.security",
+            "admin.directory.orgunit",
+            "admin.directory.domain",
+            "admin.directory.customer",
+            "admin.directory.userschema",
+            "admin.directory.rolemanagement",
+            "admin.directory.resource.calendar",
+            "admin.directory.device.mobile",
+            "admin.directory.device.mobile.action",
+            "admin.directory.device.chromeos",
+            "admin.chrome.printers",
+        ],
+        (Service::AdminGroups, Level::Read) => &[
+            "admin.directory.group.readonly",
+            "admin.directory.group.member.readonly",
+        ],
         (Service::AdminGroups, Level::Write) => {
             &["admin.directory.group", "admin.directory.group.member"]
         }
-        (Service::CloudIdentity, Level::Read) => &["cloud-identity.groups.readonly"],
-        (Service::CloudIdentity, Level::Write) => &["cloud-identity.groups"],
+        (Service::CloudIdentity, Level::Read) => &[
+            "cloud-identity.groups.readonly",
+            "cloud-identity.policies.readonly",
+            "cloud-identity.inboundsso.readonly",
+            "cloud-identity.allowlisteddomains.readonly",
+            "cloud-identity.devices.lookup",
+        ],
+        (Service::CloudIdentity, Level::Write) => &[
+            "cloud-identity.groups",
+            "cloud-identity.policies",
+            "cloud-identity.inboundsso",
+            "cloud-identity.allowlisteddomains",
+        ],
     }
 }
 
@@ -235,8 +307,8 @@ pub fn business_selection_from_scopes(granted: &[String]) -> BusinessSelection {
 ///
 /// ```
 /// use haulmer_googleworkspace_mcp_core::{scopes, Level, Service};
-/// let granted = scopes::selection_from_scopes(&["https://www.googleapis.com/auth/drive.readonly".to_string()]);
-/// assert!(granted.contains(Service::Drive, Level::Read));
+/// let granted = scopes::selection_from_scopes(&["https://www.googleapis.com/auth/tasks.readonly".to_string()]);
+/// assert!(granted.contains(Service::Tasks, Level::Read));
 /// ```
 pub fn selection_from_scopes(granted: &[String]) -> Selection {
     let mut selection = Selection::new();

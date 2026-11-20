@@ -328,7 +328,12 @@ fn a_failure_on_a_service_with_write_access_returns_the_raw_output() {
     connected(
         &home,
         &runner,
-        &["gmail.readonly", "https://mail.google.com/"],
+        &[
+            "gmail.readonly",
+            "https://mail.google.com/",
+            "gmail.settings.basic",
+            "gmail.settings.sharing",
+        ],
         true,
     );
     runner.on(&["gmail"], FakeReply::exit(1, "", "400 bad request"));

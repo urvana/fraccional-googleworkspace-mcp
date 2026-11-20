@@ -1,0 +1,202 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: "12.17.0"
+  NODE_VERSION: "24"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundle: nsis
+            arch: x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            bundle: app,dmg
+            arch: aarch64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            bundle: app,dmg
+            arch: x86_64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check tag matches app version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Tag $TAG does not match tauri.conf.json version $version"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Set up Rust
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup update stable --no-self-update
+          rustup default stable
+          rustup target add "$TARGET"
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: ${{ matrix.target }}
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      # Not code-signed (pilot). The updater key signs the
+      # update files that `bundle.createUpdaterArtifacts` writes (`.sig`).
+      - name: pnpm tauri build
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          BUNDLE: ${{ matrix.bundle }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build --target "$TARGET" --bundles "$BUNDLE"
+
+      # Collect the installer plus the update file and its signature. The macOS update file has
+      # the same name on both architectures, so it gets the version and architecture in its name.
+      - name: Collect release files
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          ARCH: ${{ matrix.arch }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          bundle="target/$TARGET/release/bundle"
+          mkdir staging
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp "$bundle"/nsis/*-setup.exe "$bundle"/nsis/*-setup.exe.sig staging/
+          else
+            cp "$bundle"/dmg/*.dmg staging/
+            cp "$bundle"/macos/*.app.tar.gz "staging/fraccional-googleworkspace-mcp_${TAG#v}_${ARCH}.app.tar.gz"
+            cp "$bundle"/macos/*.app.tar.gz.sig "staging/fraccional-googleworkspace-mcp_${TAG#v}_${ARCH}.app.tar.gz.sig"
+          fi
+          ls -l staging
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bundle-${{ matrix.target }}
+          path: staging/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: draft GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: bundle-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate SHA-256 files
+        working-directory: dist
+        run: |
+          shopt -s nullglob
+          files=(*.exe *.dmg)
+          if [ "${#files[@]}" -ne 3 ]; then
+            echo "::error::Expected 3 installers, found ${#files[@]}: ${files[*]}"
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            sha256sum "$f" > "$f.sha256"
+          done
+          sha256sum "${files[@]}" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      # Static manifest read by the in-app updater (`plugins.updater.endpoints`). Platform keys are
+      # `darwin-aarch64`, `darwin-x86_64` and `windows-x86_64`.
+      - name: Generate latest.json
+        working-directory: dist
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          base="https://github.com/$REPO/releases/download/$TAG"
+          windows_file=$(basename "$(ls ./*-setup.exe)")
+          jq -n \
+            --arg version "$version" \
+            --arg notes "https://github.com/$REPO/releases/tag/$TAG" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg base "$base" \
+            --arg windows_file "$windows_file" \
+            --arg windows_sig "$(cat "$windows_file.sig")" \
+            --arg mac_arm_sig "$(cat "fraccional-googleworkspace-mcp_${version}_aarch64.app.tar.gz.sig")" \
+            --arg mac_x64_sig "$(cat "fraccional-googleworkspace-mcp_${version}_x86_64.app.tar.gz.sig")" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": {
+                  signature: $mac_arm_sig,
+                  url: "\($base)/fraccional-googleworkspace-mcp_\($version)_aarch64.app.tar.gz"
+                },
+                "darwin-x86_64": {
+                  signature: $mac_x64_sig,
+                  url: "\($base)/fraccional-googleworkspace-mcp_\($version)_x86_64.app.tar.gz"
+                },
+                "windows-x86_64": {
+                  signature: $windows_sig,
+                  url: "\($base)/\($windows_file)"
+                }
+              }
+            }' > latest.json
+          cat latest.json
+
+      - name: Create draft release
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --draft \
+            --verify-tag \
+            --title "fraccional-googleworkspace-mcp $TAG" \
+            --generate-notes \
+            ./*.exe ./*.dmg ./*.sha256 SHA256SUMS.txt \
+            ./*.app.tar.gz ./*.sig latest.json

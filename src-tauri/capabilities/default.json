@@ -1,0 +1,26 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main",
+    "skills",
+    "install"
+  ],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://accounts.google.com/*" },
+        { "url": "https://myaccount.google.com/*" }
+      ]
+    },
+    "opener:allow-reveal-item-in-dir",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

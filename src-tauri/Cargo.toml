@@ -1,0 +1,24 @@
+[package]
+name = "fraccional-googleworkspace-mcp"
+description = "Desktop app that connects AI agents to Google Workspace through gws."
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[lib]
+# The `_lib` suffix keeps the lib name distinct from the bin name (cargo issue #8519 on Windows).
+name = "fraccional_googleworkspace_mcp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.5", features = [] }
+
+[dependencies]
+haulmer-googleworkspace-mcp-core = { path = "../crates/core" }
+tauri = { version = "2.12.6", features = ["tray-icon", "image-png"] }
+serde_json = "1.0.154"
+tauri-plugin-dialog = "2.8.4"
+tauri-plugin-opener = "2.7.3"
+tauri-plugin-process = "2.4.0"
+tauri-plugin-single-instance = "2.5.5"
+tauri-plugin-updater = "2.14.1"

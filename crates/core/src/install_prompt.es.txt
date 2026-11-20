@@ -1,0 +1,30 @@
+Configura fraccional-googleworkspace-mcp como servidor MCP local (stdio) en este equipo.
+
+Ejecutable (ruta absoluta, entregada por la app):
+{exe}
+Argumento: mcp
+
+Reglas:
+1. Si un comando es destructivo o escribe algo (por ejemplo, cambia una configuración o instala archivos), pídeme confirmación antes de ejecutarlo, a menos que te diga lo contrario.
+2. Si ya existe un servidor llamado "fraccional-googleworkspace-mcp", muéstrame su configuración y pregúntame antes de reemplazarlo.
+3. No modifiques otros servidores ni otros archivos.
+4. En los comandos de shell, la ruta va entre comillas dobles. Ajusta las comillas a tu shell si hace falta, pero no cambies la ruta.
+
+Pasos:
+1. Si eres Claude Code, ejecuta:
+   claude mcp add --scope user fraccional-googleworkspace-mcp -- "{exe}" mcp
+   y verifica con: claude mcp get fraccional-googleworkspace-mcp (debe decir "Connected").
+2. Si eres Codex (CLI, extensión de IDE o Codex en la app de escritorio de ChatGPT), ejecuta:
+   codex mcp add fraccional-googleworkspace-mcp -- "{exe}" mcp
+   y verifica con: codex mcp get fraccional-googleworkspace-mcp
+   La app de escritorio de ChatGPT usa la misma configuración que Codex.
+3. Si eres otro agente (Hermes, Cursor, …), registra un servidor MCP stdio en tu propia configuración de MCP, con comando {exe} y argumentos ["mcp"].
+4. Instala las skills de Google Workspace (opcional). Ejecuta:
+   {skills_command}
+   Si npx no está disponible o falla, no insistas: dile a la persona que las skills son opcionales y que puede descargarlas en fraccional-googleworkspace-mcp › Abrir skills › Descargar .zip.
+5. Al final dime si debo abrir una sesión nueva o reiniciar la app, y cómo ver la herramienta "gws" con /mcp.
+
+Si no puedes ejecutar comandos en este equipo (por ejemplo, eres una app de chat), explícame estos pasos para que los haga yo. Los nombres de los menús pueden estar traducidos:
+- Claude Desktop: en fraccional-googleworkspace-mcp abre "Conectar un agente…" y pulsa "Instalar MCP".
+- App de escritorio de ChatGPT: Settings > MCP servers > Add server. Elige STDIO. En el comando pega la ruta del ejecutable de arriba, y en los argumentos escribe mcp. Guarda y pulsa Restart.
+- claude.ai o chatgpt.com (chat en el navegador): fraccional-googleworkspace-mcp no funciona ahí, porque necesita un programa local. Usa Claude Code, Codex, ChatGPT de escritorio o Claude Desktop.

@@ -1,0 +1,28 @@
+[package]
+name = "haulmer-googleworkspace-mcp-core"
+description = "Core behaviour of haulmer-googleworkspace-mcp: selection, gws login, status, revoke and skills."
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[lib]
+name = "haulmer_googleworkspace_mcp_core"
+
+[features]
+# Exposes the `testing` module (FakeRunner, FakeHttp) to integration tests and other crates.
+testing = []
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+ureq = { version = "3.5.2", default-features = false, features = ["rustls"] }
+sha2 = "0.11.1"
+flate2 = "1.1.11"
+tar = { version = "0.4.46", default-features = false }
+zip = { version = "9.6.1", default-features = false, features = ["deflate-flate2"] }
+
+[dev-dependencies]
+# Self dev-dependency: turns on the `testing` feature for this crate's integration tests.
+haulmer-googleworkspace-mcp-core = { path = ".", features = ["testing"] }
+tempfile = "3.27.0"

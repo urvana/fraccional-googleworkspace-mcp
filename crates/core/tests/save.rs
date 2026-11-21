@@ -1,13 +1,15 @@
 //! T07 — `Core::save()` and `Core::cancel_login()`: connect, add and remove services.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
+use std::time::Duration;
 
 use fraccional_googleworkspace_mcp_core::gws_env::MARKER_FILE;
 use fraccional_googleworkspace_mcp_core::revoke::REVOKE_URL;
 use fraccional_googleworkspace_mcp_core::testing::{CallKind, FakeHttp, FakeReply, FakeRunner};
 use fraccional_googleworkspace_mcp_core::{
-    BusinessConnector, BusinessSelection, Core, CoreError, HttpResponse, Level, Paths, SaveOutcome,
+    BusinessConnector, BusinessSelection, CommandSpec, Core, CoreError, HttpResponse, Level,
+    OutputLine, Paths, ProcessKiller, ProcessOutput, ProcessRunner, RunningProcess, SaveOutcome,
     Selection, Service,
 };
 use tempfile::TempDir;
@@ -355,6 +357,27 @@ fn cancel_without_a_running_login_does_nothing() {
     let f = fixture();
     f.core.cancel_login().unwrap();
     assert_eq!(f.runner.kill_count(), 0);
+    assert!(matches!(
+        f.save(&Selection::from_levels([(Service::Gmail, Level::Read)])),
+        SaveOutcome::Connected(_)
+    ));
+}
+
+#[test]
+fn cancellation_at_save_admission_prevents_login_without_poisoning_future_saves() {
+    let f = fixture();
+    f.core.cancel_login().unwrap();
+    let selection = Selection::from_levels([(Service::Gmail, Level::Read)]);
+    let result = f.core.save_with_business_on_start(
+        &selection,
+        &BusinessSelection::new(),
+        false,
+        &|| f.core.cancel_login().unwrap(),
+        &|_| {},
+    );
+    assert_eq!(result, Err(CoreError::Cancelled));
+    assert!(f.changing_calls().is_empty());
+    assert!(matches!(f.save(&selection), SaveOutcome::Connected(_)));
 }
 
 #[test]
@@ -427,4 +450,376 @@ fn a_cancelled_login_after_removing_a_level_reports_that_access_was_removed() {
     });
 
     assert_eq!(result, Err(CoreError::AccessRemoved));
+}
+
+// Hold a fake command at a known boundary without relying on scheduling or sleeps.
+fn gate(
+    f: &Fixture,
+    prefix: &[&str],
+    reply: FakeReply,
+    consume_existing: bool,
+) -> (mpsc::Receiver<()>, mpsc::Sender<()>) {
+    let (started, observed) = mpsc::channel();
+    let (release, released) = mpsc::channel();
+    let released = Mutex::new(released);
+    f.runner.on_with(prefix, move |_| {
+        started.send(()).unwrap();
+        released
+            .lock()
+            .unwrap()
+            .recv_timeout(Duration::from_secs(5))
+            .unwrap();
+        reply.clone()
+    });
+    if consume_existing {
+        f.runner.run(&CommandSpec::new("gws", prefix, ".")).unwrap();
+    }
+    (observed, release)
+}
+
+fn wait(receiver: &mpsc::Receiver<()>) {
+    receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+}
+
+#[test]
+fn access_changes_reject_overlap_in_both_directions_and_cancel_only_save() {
+    let f = fixture();
+    f.runner.on(
+        &["auth", "login", "--scopes", GMAIL_READ],
+        FakeReply::exit(0, "", &format!("  {URL}\n")).hang_until_killed(),
+    );
+    let (seen, observed) = mpsc::channel();
+    std::thread::scope(|scope| {
+        let save = scope.spawn(|| {
+            f.core.save_with_business_identified(
+                &Selection::from_levels([(Service::Gmail, Level::Read)]),
+                &BusinessSelection::new(),
+                false,
+                Some("current"),
+                &|| {},
+                &|_| seen.send(()).unwrap(),
+            )
+        });
+        wait(&observed);
+        assert_eq!(
+            f.core.save(&Selection::new(), false, &|_| {}),
+            Err(CoreError::AccessInProgress)
+        );
+        let started = std::cell::Cell::new(false);
+        assert_eq!(
+            f.core.save_with_business_on_start(
+                &Selection::new(),
+                &BusinessSelection::new(),
+                false,
+                &|| started.set(true),
+                &|_| {},
+            ),
+            Err(CoreError::AccessInProgress)
+        );
+        assert!(!started.get());
+        assert_eq!(f.core.revoke_all(false), Err(CoreError::AccessInProgress));
+        f.core.cancel_login_for("old").unwrap();
+        assert_eq!(f.runner.kill_count(), 0);
+        f.core.cancel_login_for("current").unwrap();
+        assert_eq!(save.join().unwrap(), Err(CoreError::Cancelled));
+    });
+
+    f.save(&Selection::from_levels([(Service::Calendar, Level::Read)]));
+    let (started, release) = gate(
+        &f,
+        &["auth", "export", "--unmasked"],
+        FakeReply::ok(r#"{"refresh_token":"old"}"#),
+        true,
+    );
+    std::thread::scope(|scope| {
+        let revoke = scope.spawn(|| f.core.revoke_all(false));
+        wait(&started);
+        assert_eq!(
+            f.core.save(&Selection::new(), false, &|_| {}),
+            Err(CoreError::AccessInProgress)
+        );
+        assert_eq!(f.core.revoke_all(false), Err(CoreError::AccessInProgress));
+        f.core.cancel_login().unwrap();
+        release.send(()).unwrap();
+        assert!(revoke.join().unwrap().is_ok());
+    });
+    assert_eq!(f.runner.kill_count(), 1);
+    assert!(f.core.revoke_all(false).is_ok());
+}
+
+#[test]
+fn cancellation_before_revocation_leaves_access_untouched() {
+    for remove in [false, true] {
+        let f = fixture();
+        f.save(&Selection::from_levels([
+            (Service::Gmail, Level::Read),
+            (Service::Calendar, Level::Read),
+        ]));
+        let (started, release) = gate(
+            &f,
+            &["auth", "status"],
+            FakeReply::ok(&format!(
+                r#"{{"scopes":["{GMAIL_READ}","{CALENDAR_READ}"]}}"#
+            )),
+            true,
+        );
+        let before = f.changing_calls();
+        std::thread::scope(|scope| {
+            let save = scope.spawn(|| {
+                let selection = if remove {
+                    Selection::from_levels([(Service::Gmail, Level::Read)])
+                } else {
+                    Selection::from_levels([
+                        (Service::Gmail, Level::Read),
+                        (Service::Calendar, Level::Read),
+                    ])
+                };
+                f.core.save(&selection, false, &|_| {})
+            });
+            wait(&started);
+            f.core.cancel_login().unwrap();
+            release.send(()).unwrap();
+            assert_eq!(save.join().unwrap(), Err(CoreError::Cancelled));
+        });
+        assert_eq!(f.changing_calls(), before);
+        assert!(f.http.requests().is_empty());
+        assert!(f.config_dir.join(MARKER_FILE).is_file());
+    }
+}
+
+#[test]
+fn cancelling_empty_save_while_finding_gws_does_not_start_revocation() {
+    struct PausedRunner {
+        inner: Arc<FakeRunner>,
+        started: mpsc::Sender<()>,
+        release: Mutex<mpsc::Receiver<()>>,
+    }
+
+    impl ProcessRunner for PausedRunner {
+        fn run(&self, command: &CommandSpec) -> Result<ProcessOutput, CoreError> {
+            if command.args == ["--version"] {
+                self.started.send(()).unwrap();
+                self.release
+                    .lock()
+                    .unwrap()
+                    .recv_timeout(Duration::from_secs(5))
+                    .unwrap();
+            }
+            self.inner.run(command)
+        }
+
+        fn spawn(&self, command: &CommandSpec) -> Result<Box<dyn RunningProcess>, CoreError> {
+            self.inner.spawn(command)
+        }
+    }
+
+    let f = fixture();
+    f.save(&Selection::from_levels([(Service::Gmail, Level::Read)]));
+    let (started, observed) = mpsc::channel();
+    let (release, released) = mpsc::channel();
+    let core = Core::new(
+        f.core.paths().clone(),
+        Arc::new(PausedRunner {
+            inner: f.runner.clone(),
+            started,
+            release: Mutex::new(released),
+        }),
+        f.http.clone(),
+    );
+    let before = f.changing_calls();
+    std::thread::scope(|scope| {
+        let save = scope.spawn(|| core.save(&Selection::new(), false, &|_| {}));
+        wait(&observed);
+        core.cancel_login().unwrap();
+        release.send(()).unwrap();
+        assert_eq!(save.join().unwrap(), Err(CoreError::Cancelled));
+    });
+    assert_eq!(f.changing_calls(), before);
+    assert!(f.config_dir.join(MARKER_FILE).is_file());
+    assert!(f.http.requests().is_empty());
+}
+
+#[test]
+fn cancellation_during_revocation_finishes_it_and_preserves_errors() {
+    for (empty, failed) in [(false, false), (false, true), (true, false), (true, true)] {
+        let f = fixture();
+        f.save(&Selection::from_levels([
+            (Service::Gmail, Level::Read),
+            (Service::Calendar, Level::Read),
+        ]));
+        let reply = if failed {
+            FakeReply::exit(1, "", "export failed")
+        } else {
+            FakeReply::ok(r#"{"refresh_token":"old"}"#)
+        };
+        let (started, release) = gate(&f, &["auth", "export", "--unmasked"], reply, true);
+        let before = f.changing_calls().len();
+        std::thread::scope(|scope| {
+            let save = scope.spawn(|| {
+                let selection = if empty {
+                    Selection::new()
+                } else {
+                    Selection::from_levels([(Service::Gmail, Level::Read)])
+                };
+                f.core.save(&selection, false, &|_| {})
+            });
+            wait(&started);
+            f.core.cancel_login().unwrap();
+            release.send(()).unwrap();
+            let result = save.join().unwrap();
+            if failed {
+                assert!(
+                    matches!(result, Err(CoreError::RevokeFailed(_))),
+                    "{result:?}"
+                );
+            } else {
+                assert_eq!(result, Err(CoreError::AccessRemoved));
+            }
+        });
+        assert_eq!(
+            &f.changing_calls()[before..],
+            [
+                args(&["auth", "export", "--unmasked"]),
+                args(&["auth", "logout"])
+            ]
+        );
+        assert!(!f.config_dir.join(MARKER_FILE).exists());
+    }
+}
+
+#[test]
+fn cancellation_racing_process_start_kills_the_new_process() {
+    let f = fixture();
+    let (started, release) = gate(
+        &f,
+        &["auth", "login", "--scopes", GMAIL_READ],
+        FakeReply::ok("").hang_until_killed(),
+        false,
+    );
+    std::thread::scope(|scope| {
+        let save = scope.spawn(|| {
+            f.core.save(
+                &Selection::from_levels([(Service::Gmail, Level::Read)]),
+                false,
+                &|_| {},
+            )
+        });
+        wait(&started);
+        f.core.cancel_login().unwrap();
+        release.send(()).unwrap();
+        assert_eq!(save.join().unwrap(), Err(CoreError::Cancelled));
+    });
+    assert_eq!(f.runner.kill_count(), 1);
+    assert!(f.core.revoke_all(false).is_ok());
+}
+
+#[test]
+fn access_stays_busy_until_a_concurrent_cancellation_finishes() {
+    struct PausedKiller {
+        started: mpsc::Sender<()>,
+        release: Mutex<mpsc::Receiver<()>>,
+    }
+    impl ProcessKiller for PausedKiller {
+        fn kill(&self) {
+            self.started.send(()).unwrap();
+            self.release
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(5))
+                .unwrap();
+        }
+    }
+    struct PausedProcess {
+        killer: Arc<PausedKiller>,
+        finish: mpsc::Receiver<()>,
+        url_sent: bool,
+    }
+    impl RunningProcess for PausedProcess {
+        fn next_line(&mut self) -> Option<OutputLine> {
+            if !self.url_sent {
+                self.url_sent = true;
+                return Some(OutputLine::Stderr(URL.into()));
+            }
+            self.finish.recv_timeout(Duration::from_secs(5)).unwrap();
+            None
+        }
+        fn killer(&self) -> Arc<dyn ProcessKiller> {
+            self.killer.clone()
+        }
+        fn wait(&mut self) -> Result<i32, CoreError> {
+            Ok(0)
+        }
+    }
+    struct PausedRunner {
+        inner: Arc<FakeRunner>,
+        killer: Arc<PausedKiller>,
+        finish: Mutex<Option<mpsc::Receiver<()>>>,
+    }
+    impl ProcessRunner for PausedRunner {
+        fn run(&self, command: &CommandSpec) -> Result<ProcessOutput, CoreError> {
+            self.inner.run(command)
+        }
+        fn spawn(&self, _: &CommandSpec) -> Result<Box<dyn RunningProcess>, CoreError> {
+            Ok(Box::new(PausedProcess {
+                killer: self.killer.clone(),
+                finish: self.finish.lock().unwrap().take().unwrap(),
+                url_sent: false,
+            }))
+        }
+    }
+
+    let f = fixture();
+    let (kill_started, kill_observed) = mpsc::channel();
+    let (release_kill, kill_released) = mpsc::channel();
+    let (finish_process, finished) = mpsc::channel();
+    let (url_seen, url_observed) = mpsc::channel();
+    let core = Core::new(
+        f.core.paths().clone(),
+        Arc::new(PausedRunner {
+            inner: f.runner.clone(),
+            killer: Arc::new(PausedKiller {
+                started: kill_started,
+                release: Mutex::new(kill_released),
+            }),
+            finish: Mutex::new(Some(finished)),
+        }),
+        f.http.clone(),
+    );
+    std::thread::scope(|scope| {
+        let save = scope.spawn(|| {
+            core.save(
+                &Selection::from_levels([(Service::Gmail, Level::Read)]),
+                false,
+                &|_| url_seen.send(()).unwrap(),
+            )
+        });
+        wait(&url_observed);
+        let cancel = scope.spawn(|| core.cancel_login());
+        wait(&kill_observed);
+        finish_process.send(()).unwrap();
+        assert!(save.join().unwrap().is_ok());
+        assert_eq!(core.revoke_all(false), Err(CoreError::AccessInProgress));
+        release_kill.send(()).unwrap();
+        cancel.join().unwrap().unwrap();
+    });
+    assert!(core.revoke_all(false).is_ok());
+}
+
+#[test]
+fn panic_in_login_callback_kills_process_and_releases_access() {
+    let f = fixture();
+    f.runner.on(
+        &["auth", "login", "--scopes", GMAIL_READ],
+        FakeReply::exit(0, "", &format!("{URL}\n")).hang_until_killed(),
+    );
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        f.core.save(
+            &Selection::from_levels([(Service::Gmail, Level::Read)]),
+            false,
+            &|_| panic!("callback"),
+        )
+    }));
+    assert!(result.is_err());
+    assert_eq!(f.runner.kill_count(), 1);
+    assert!(f.core.revoke_all(false).is_ok());
 }

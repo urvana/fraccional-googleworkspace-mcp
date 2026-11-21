@@ -63,6 +63,7 @@ Run the checks used by CI:
 
 ```sh
 pnpm lint                 # Biome + Clippy
+pnpm test                 # Frontend UI tests with mocked Tauri commands
 cargo fmt --all -- --check
 cargo test --workspace --locked
 pnpm build                # TypeScript check + Vite production build

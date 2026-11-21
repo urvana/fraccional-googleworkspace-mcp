@@ -550,6 +550,9 @@ pub enum CoreError {
     /// The person cancelled the Google sign-in.
     #[error("Google sign-in was cancelled")]
     Cancelled,
+    /// Another save or revocation is already changing access on this Core.
+    #[error("another access change is already in progress")]
+    AccessInProgress,
     /// Local credentials were cleared but Google did not confirm the revocation.
     #[error("local credentials were cleared but Google revocation failed: {0}")]
     RevokeFailed(String),

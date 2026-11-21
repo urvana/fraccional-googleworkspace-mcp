@@ -89,10 +89,8 @@ pub struct Core {
     /// Downloads and the revoke call.
     #[allow(dead_code)] // used from T03 on
     http: Arc<dyn HttpClient>,
-    /// Killer of the login `save` is waiting on. `cancel_login` takes it and kills;
-    /// `save` takes it after the process ends: finding it gone means the login was cancelled.
-    #[allow(dead_code)] // used by T07
-    active_login: Mutex<Option<Arc<dyn ProcessKiller>>>,
+    /// Access changes are exclusive per Core; cancellation never waits for the operation.
+    access_operation: Mutex<Option<AccessOperation>>,
     /// Expected SHA-256 of the skills tarball; [`skills::SKILLS_TARBALL_SHA256`] unless overridden.
     skills_sha256: String,
 }
@@ -113,11 +111,128 @@ impl Core {
             paths,
             runner,
             http,
-            active_login: Mutex::new(None),
+            access_operation: Mutex::new(None),
             skills_sha256: skills::SKILLS_TARBALL_SHA256.to_string(),
         }
     }
+}
 
+enum AccessOperation {
+    Save {
+        id: Option<String>,
+        cancelled: bool,
+        killer: Option<Arc<dyn ProcessKiller>>,
+        cancel_in_flight: bool,
+        finished: bool,
+    },
+    Revoke,
+}
+
+struct AccessGuard<'a>(&'a Core);
+struct AccessCleanup<'a>(&'a Core);
+
+impl Core {
+    fn begin_access(&self, operation: AccessOperation) -> Result<AccessGuard<'_>, CoreError> {
+        let mut active = self
+            .access_operation
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if active.is_some() {
+            return Err(CoreError::AccessInProgress);
+        }
+        *active = Some(operation);
+        Ok(AccessGuard(self))
+    }
+
+    fn check_cancelled(&self) -> Result<(), CoreError> {
+        let active = self
+            .access_operation
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if matches!(
+            *active,
+            Some(AccessOperation::Save {
+                cancelled: true,
+                ..
+            })
+        ) {
+            Err(CoreError::Cancelled)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl Drop for AccessGuard<'_> {
+    fn drop(&mut self) {
+        let killer = {
+            let mut active = self
+                .0
+                .access_operation
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            match active.as_mut() {
+                Some(AccessOperation::Save {
+                    cancel_in_flight: true,
+                    finished,
+                    ..
+                }) => {
+                    *finished = true;
+                    return;
+                }
+                Some(AccessOperation::Save { killer, .. }) => killer.take(),
+                _ => None,
+            }
+        };
+        let _cleanup = AccessCleanup(self.0);
+        if let Some(killer) = killer {
+            killer.kill();
+        }
+    }
+}
+
+impl Drop for AccessCleanup<'_> {
+    fn drop(&mut self) {
+        self.0
+            .access_operation
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+    }
+}
+
+struct CancelKillGuard<'a> {
+    core: &'a Core,
+    killer: Arc<dyn ProcessKiller>,
+}
+
+impl Drop for CancelKillGuard<'_> {
+    fn drop(&mut self) {
+        let mut active = self
+            .core
+            .access_operation
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if let Some(AccessOperation::Save {
+            cancel_in_flight,
+            finished,
+            killer,
+            ..
+        }) = active.as_mut()
+        {
+            if *finished {
+                active.take();
+            } else {
+                *cancel_in_flight = false;
+                if std::thread::panicking() {
+                    *killer = Some(self.killer.clone());
+                }
+            }
+        }
+    }
+}
+
+impl Core {
     /// Replaces the expected SHA-256 of the skills tarball. Only tests need this: they serve
     /// a small fixture tarball instead of the pinned one.
     ///

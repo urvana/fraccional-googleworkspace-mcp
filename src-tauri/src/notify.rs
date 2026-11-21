@@ -30,7 +30,7 @@ pub(crate) fn save_text(
             None => Some("No se encontró la cuenta. Vuelve a intentarlo.".into()),
         },
         Ok(SaveOutcome::NeedsReplaceConfirmation) => None,
-        Err(CoreError::Cancelled) => None,
+        Err(CoreError::Cancelled | CoreError::AccessInProgress) => None,
         Err(error) => Some(format!("No se pudo guardar: {error}")),
     }
 }
@@ -47,6 +47,7 @@ pub(crate) fn revoke_text(result: &Result<RevokeOutcome, CoreError>) -> Option<S
     match result {
         Ok(RevokeOutcome::Revoked) => Some("Se revocó todo el acceso".into()),
         Ok(RevokeOutcome::NeedsForeignConfirmation) => None,
+        Err(CoreError::AccessInProgress) => None,
         Err(error) => Some(format!("No se pudo revocar: {error}")),
     }
 }
@@ -121,6 +122,7 @@ mod tests {
             None
         );
         assert_eq!(save_text(&Err(CoreError::Cancelled), false), None);
+        assert_eq!(save_text(&Err(CoreError::AccessInProgress), false), None);
     }
 
     #[test]
@@ -147,5 +149,6 @@ mod tests {
             revoke_text(&Err(CoreError::Io("offline".into()))).as_deref(),
             Some("No se pudo revocar: file error: offline")
         );
+        assert_eq!(revoke_text(&Err(CoreError::AccessInProgress)), None);
     }
 }

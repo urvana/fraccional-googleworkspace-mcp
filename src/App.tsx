@@ -236,10 +236,24 @@ export default function App() {
   const [selection, setSelection] = useState<Selection>([]);
   const [busy, setBusy] = useState<Busy>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [canCancel, setCanCancel] = useState(false);
   const cancellingRef = useRef(false);
+  const activeSaveId = useRef<string | null>(null);
+  const readySaveId = useRef<string | null>(null);
+  const stopSaveListener = useRef<(() => void) | null>(null);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [update, setUpdate] = useState<Update | null>(null);
+
+  useEffect(
+    () => () => {
+      activeSaveId.current = null;
+      readySaveId.current = null;
+      stopSaveListener.current?.();
+      stopSaveListener.current = null;
+    },
+    [],
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: this startup effect intentionally runs once.
   useEffect(() => {
@@ -401,12 +415,53 @@ export default function App() {
     // An empty selection makes `save` revoke everything instead of signing in.
     const removedEverything =
       selection.length === 0 && businessSelection.length === 0;
+    async function submitSave(confirmReplace: boolean) {
+      const saveId = crypto.randomUUID();
+      activeSaveId.current = saveId;
+      readySaveId.current = null;
+      setCanCancel(false);
+      let unlisten: () => void;
+      try {
+        unlisten = await listen<string>("save-ready", ({ payload }) => {
+          if (
+            payload === saveId &&
+            activeSaveId.current === saveId &&
+            !cancellingRef.current
+          ) {
+            readySaveId.current = saveId;
+            setCanCancel(true);
+          }
+        });
+      } catch (error) {
+        if (activeSaveId.current === saveId) activeSaveId.current = null;
+        throw new Error(
+          `No se pudo preparar la cancelación: ${ERROR_TEXT(error)}`,
+        );
+      }
+      if (activeSaveId.current !== saveId) {
+        unlisten();
+        throw new Error("La ventana se cerró antes de guardar.");
+      }
+      stopSaveListener.current = unlisten;
+      try {
+        return await invoke<SaveOutcome>("save", {
+          selection,
+          businessSelection,
+          confirmReplace,
+          saveId,
+        });
+      } finally {
+        if (activeSaveId.current === saveId) {
+          activeSaveId.current = null;
+          readySaveId.current = null;
+          stopSaveListener.current = null;
+          setCanCancel(false);
+          unlisten();
+        }
+      }
+    }
     try {
-      let outcome = await invoke<SaveOutcome>("save", {
-        selection,
-        businessSelection,
-        confirmReplace: false,
-      });
+      let outcome = await submitSave(false);
       if (outcome.kind === "needs_replace_confirmation") {
         const replace = await ask(
           "Es necesario actualizar los permisos. Si cancelas la operación, tus permisos actuales seguirán funcionando como antes.",
@@ -420,11 +475,7 @@ export default function App() {
         if (!replace) {
           return;
         }
-        outcome = await invoke<SaveOutcome>("save", {
-          selection,
-          businessSelection,
-          confirmReplace: true,
-        });
+        outcome = await submitSave(true);
       }
       if (outcome.kind === "connected") {
         const account = outcome.status.account;
@@ -474,6 +525,7 @@ export default function App() {
       await refreshStatus();
     } finally {
       setBusy(null);
+      setCanCancel(false);
       cancellingRef.current = false;
       setCancelling(false);
       setAuthUrl(null);
@@ -487,13 +539,18 @@ export default function App() {
    * <button onClick={handleCancel}>Cancel</button>
    */
   async function handleCancel() {
-    if (cancellingRef.current) {
+    const saveId = activeSaveId.current;
+    if (
+      cancellingRef.current ||
+      saveId === null ||
+      readySaveId.current !== saveId
+    ) {
       return;
     }
     cancellingRef.current = true;
     setCancelling(true);
     try {
-      await invoke("cancel_login");
+      await invoke("cancel_login", { saveId });
     } catch (error) {
       setNotice({ kind: "error", text: ERROR_TEXT(error) });
       cancellingRef.current = false;
@@ -897,7 +954,7 @@ export default function App() {
               <button
                 type="button"
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
-                disabled={cancelling}
+                disabled={cancelling || !canCancel}
                 aria-busy={cancelling}
                 onClick={handleCancel}
               >

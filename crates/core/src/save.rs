@@ -3,7 +3,8 @@
 use std::path::Path;
 
 use crate::{
-    BusinessSelection, Core, CoreError, OutputLine, SaveOutcome, Selection, gws_env, scopes,
+    AccessOperation, BusinessSelection, CancelKillGuard, Core, CoreError, OutputLine, SaveOutcome,
+    Selection, gws_env, scopes,
 };
 
 impl Core {
@@ -15,6 +16,7 @@ impl Core {
     /// Blocks until the login ends or [`Core::cancel_login`] is called ([`CoreError::Cancelled`]).
     /// If the old access was revoked first and the login is then cancelled or fails, returns
     /// [`CoreError::AccessRemoved`] (nothing is connected any more).
+    /// Returns [`CoreError::AccessInProgress`] if this Core is already saving or revoking.
     ///
     /// # Example
     ///
@@ -45,6 +47,53 @@ impl Core {
         confirm_replace: bool,
         on_auth_url: &dyn Fn(&str),
     ) -> Result<SaveOutcome, CoreError> {
+        self.save_with_business_on_start(
+            selection,
+            business_selection,
+            confirm_replace,
+            &|| {},
+            on_auth_url,
+        )
+    }
+
+    /// Like [`Core::save_with_business`], calling `on_start` only after reserving access.
+    pub fn save_with_business_on_start(
+        &self,
+        selection: &Selection,
+        business_selection: &BusinessSelection,
+        confirm_replace: bool,
+        on_start: &dyn Fn(),
+        on_auth_url: &dyn Fn(&str),
+    ) -> Result<SaveOutcome, CoreError> {
+        self.save_with_business_identified(
+            selection,
+            business_selection,
+            confirm_replace,
+            None,
+            on_start,
+            on_auth_url,
+        )
+    }
+
+    /// Like [`Core::save_with_business_on_start`], with an optional cancellation identifier.
+    pub fn save_with_business_identified(
+        &self,
+        selection: &Selection,
+        business_selection: &BusinessSelection,
+        confirm_replace: bool,
+        id: Option<&str>,
+        on_start: &dyn Fn(),
+        on_auth_url: &dyn Fn(&str),
+    ) -> Result<SaveOutcome, CoreError> {
+        let _operation = self.begin_access(AccessOperation::Save {
+            id: id.map(str::to_owned),
+            cancelled: false,
+            killer: None,
+            cancel_in_flight: false,
+            finished: false,
+        })?;
+        on_start();
+        self.check_cancelled()?;
         let config_dir = self.settings()?.active_config_dir(&self.paths);
         let foreign = gws_env::foreign_credentials(&config_dir);
         if foreign && !confirm_replace {
@@ -55,7 +104,16 @@ impl Core {
         if selection.is_empty() && business_selection.is_empty() {
             if !foreign {
                 // Own credentials only (checked above), so no confirmation is involved.
-                self.revoke_all(false)?;
+                let had_credentials = gws_env::credentials_exist(&config_dir);
+                self.check_cancelled()?;
+                self.revoke_all_inner(false, true)?;
+                if self.check_cancelled().is_err() {
+                    return Err(if had_credentials {
+                        CoreError::AccessRemoved
+                    } else {
+                        CoreError::Cancelled
+                    });
+                }
             }
             return Ok(SaveOutcome::Connected(self.status()?));
         }
@@ -73,7 +131,8 @@ impl Core {
             .iter()
             .any(|level| !business_selection.contains(level.connector, level.level));
         if removes_a_level || removes_business_level {
-            self.revoke_and_logout(&gws)?;
+            self.check_cancelled()?;
+            self.revoke_and_logout(&gws, true)?;
             // The old access is gone: a sign-in that does not finish leaves nothing connected.
             self.login(&gws, &selection, &business_selection, on_auth_url)
                 .map_err(|_| CoreError::AccessRemoved)?;
@@ -84,7 +143,7 @@ impl Core {
         Ok(SaveOutcome::Connected(self.status()?))
     }
 
-    /// Kills the running login, if any; the blocked `save` returns [`CoreError::Cancelled`].
+    /// Cancels an active save, killing its login if running. An active revocation is not stopped.
     ///
     /// # Example
     ///
@@ -94,15 +153,47 @@ impl Core {
     /// core.cancel_login().unwrap();
     /// ```
     pub fn cancel_login(&self) -> Result<(), CoreError> {
-        let killer = self.active_login.lock().unwrap().take();
+        self.cancel_login_matching(None)
+    }
+
+    /// Cancels only the save with this identifier, if it is still active.
+    pub fn cancel_login_for(&self, id: &str) -> Result<(), CoreError> {
+        self.cancel_login_matching(Some(id))
+    }
+
+    fn cancel_login_matching(&self, id: Option<&str>) -> Result<(), CoreError> {
+        let killer = {
+            let mut active = self
+                .access_operation
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            match active.as_mut() {
+                Some(AccessOperation::Save {
+                    id: active_id,
+                    cancelled,
+                    killer,
+                    cancel_in_flight,
+                    ..
+                }) if id.is_none_or(|id| active_id.as_deref() == Some(id)) => {
+                    *cancelled = true;
+                    let killer = killer.take();
+                    if killer.is_some() {
+                        *cancel_in_flight = true;
+                    }
+                    killer
+                }
+                _ => None,
+            }
+        };
         if let Some(killer) = killer {
-            killer.kill();
+            let guard = CancelKillGuard { core: self, killer };
+            guard.killer.kill();
         }
         Ok(())
     }
 
     /// Runs `gws auth login --scopes <urls>`, forwards the first sign-in URL and waits.
-    /// [`Core::cancel_login`] taking the killer while it runs means it was cancelled.
+    /// Registers the killer even if cancellation raced with process startup.
     ///
     /// # Example
     ///
@@ -121,8 +212,30 @@ impl Core {
         requested_scopes.extend(scopes::business_scopes_for(business_selection));
         let scopes = requested_scopes.join(",");
         let command = self.gws_command(gws, &["auth", "login", "--scopes", &scopes])?;
+        // This check commits startup; later cancellation kills the process after spawn returns.
+        self.check_cancelled()?;
         let mut process = self.runner.spawn(&command)?;
-        *self.active_login.lock().unwrap() = Some(process.killer());
+        let killer = process.killer();
+        let cancelled = {
+            let mut active = self
+                .access_operation
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            match active.as_mut() {
+                Some(AccessOperation::Save {
+                    cancelled,
+                    killer: slot,
+                    ..
+                }) => {
+                    *slot = Some(killer.clone());
+                    *cancelled
+                }
+                _ => unreachable!("login requires an active save"),
+            }
+        };
+        if cancelled {
+            self.cancel_login()?;
+        }
 
         let (mut stdout, mut url_sent) = (String::new(), false);
         while let Some(line) = process.next_line() {
@@ -139,9 +252,22 @@ impl Core {
                 on_auth_url(url);
             }
         }
-        let exit_code = process.wait();
-        let cancelled = self.active_login.lock().unwrap().take().is_none();
-        let exit_code = exit_code?;
+        let exit_code = process.wait()?;
+        let cancelled = {
+            let mut active = self
+                .access_operation
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            match active.as_mut() {
+                Some(AccessOperation::Save {
+                    cancelled, killer, ..
+                }) => {
+                    killer.take();
+                    *cancelled
+                }
+                _ => unreachable!("login requires an active save"),
+            }
+        };
         if exit_code == 0 {
             return Ok(());
         }

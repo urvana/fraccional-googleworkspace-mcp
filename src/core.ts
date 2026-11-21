@@ -179,11 +179,8 @@ export function TOGGLE_LEVEL(
  * ERROR_TEXT(new Error("boom")); // "boom"
  */
 export function ERROR_TEXT(error: unknown): string {
-  if (typeof error === "string") {
-    return error;
-  } else if (error instanceof Error) {
-    return error.message;
-  } else {
-    return String(error);
-  }
+  const text = error instanceof Error ? error.message : String(error);
+  return text === "another access change is already in progress"
+    ? "Ya hay un cambio de acceso en curso. Espera a que termine."
+    : text;
 }

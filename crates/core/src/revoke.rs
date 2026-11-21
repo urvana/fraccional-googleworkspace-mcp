@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use crate::gws_env::{credentials_exist, foreign_credentials, remove_marker};
-use crate::{Core, CoreError, RevokeOutcome};
+use crate::{AccessOperation, Core, CoreError, RevokeOutcome};
 
 /// Google's OAuth token revocation endpoint.
 ///
@@ -23,6 +23,7 @@ impl Core {
     /// Credentials created by another app (no ownership marker) are only touched with
     /// `confirm_foreign`; without it nothing runs and the result is
     /// [`RevokeOutcome::NeedsForeignConfirmation`].
+    /// Returns [`CoreError::AccessInProgress`] if this Core is already saving or revoking.
     ///
     /// # Example
     ///
@@ -35,6 +36,15 @@ impl Core {
     /// }
     /// ```
     pub fn revoke_all(&self, confirm_foreign: bool) -> Result<RevokeOutcome, CoreError> {
+        let _operation = self.begin_access(AccessOperation::Revoke)?;
+        self.revoke_all_inner(confirm_foreign, false)
+    }
+
+    pub(crate) fn revoke_all_inner(
+        &self,
+        confirm_foreign: bool,
+        cancellable: bool,
+    ) -> Result<RevokeOutcome, CoreError> {
         let config_dir = self.settings()?.active_config_dir(&self.paths);
         if foreign_credentials(&config_dir) && !confirm_foreign {
             return Ok(RevokeOutcome::NeedsForeignConfirmation);
@@ -43,13 +53,16 @@ impl Core {
             Some(gws) => gws,
             None => {
                 if !credentials_exist(&config_dir) {
+                    if cancellable {
+                        self.check_cancelled()?;
+                    }
                     remove_marker(&config_dir)?;
                     return Ok(RevokeOutcome::Revoked);
                 }
                 self.ensure_gws()?
             }
         };
-        self.revoke_and_logout(&gws)?;
+        self.revoke_and_logout(&gws, cancellable)?;
         Ok(RevokeOutcome::Revoked)
     }
 
@@ -64,10 +77,14 @@ impl Core {
     /// ```ignore
     /// // inside the crate, e.g. in `save`:
     /// let gws = self.ensure_gws()?;
-    /// self.revoke_and_logout(&gws)?;
+    /// self.revoke_and_logout(&gws, true)?;
     /// ```
-    pub(crate) fn revoke_and_logout(&self, gws: &Path) -> Result<(), CoreError> {
+    pub(crate) fn revoke_and_logout(&self, gws: &Path, cancellable: bool) -> Result<(), CoreError> {
         let config_dir = self.settings()?.active_config_dir(&self.paths);
+        if cancellable {
+            // After this check the whole revocation must run, even if cancellation arrives.
+            self.check_cancelled()?;
+        }
         let revoked = if credentials_exist(&config_dir) {
             self.revoke_at_google(gws)
         } else {

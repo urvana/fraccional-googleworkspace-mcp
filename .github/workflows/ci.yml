@@ -57,6 +57,9 @@ jobs:
       - name: Lint TypeScript
         run: pnpm lint:ts
 
+      - name: Test frontend
+        run: pnpm test
+
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 

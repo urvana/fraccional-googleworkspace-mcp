@@ -1,15 +1,20 @@
 //! Tauri shell of fraccional-googleworkspace-mcp: one window, IPC commands only, no local HTTP server.
 //! Every command calls the matching `fraccional_googleworkspace_mcp_core::Core` method 1:1, with no logic.
 
+use std::cell::Cell;
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::sync::{Mutex, TryLockError};
 
 use fraccional_googleworkspace_mcp_core::{
     BusinessConnectorInfo, BusinessSelection, Core, CoreError, KeyStorage, Paths, RevokeOutcome,
     SaveOutcome, Selection, ServiceInfo, Status, mcp, mcp_clients, mcp_extension, scopes, skills,
 };
 use serde_json::Value;
-use tauri::{AppHandle, Emitter, Manager, State, WindowEvent, image::Image, tray::TrayIconBuilder};
+use tauri::{
+    AppHandle, Emitter, Manager, State, WebviewWindow, WindowEvent, image::Image,
+    tray::TrayIconBuilder,
+};
 use tauri_plugin_opener::OpenerExt;
 
 mod notify;
@@ -23,6 +28,23 @@ const CONFIG_DIR_NAME: &str = "gws-fraccional";
 
 /// Event emitted with the Google sign-in URL while `save` waits for the login.
 const AUTH_URL_EVENT: &str = "auth-url";
+const SAVE_READY_EVENT: &str = "save-ready";
+
+#[derive(Default)]
+struct AccessCommands {
+    lock: Mutex<()>,
+}
+
+impl AccessCommands {
+    fn run<T>(&self, action: impl FnOnce() -> Result<T, CoreError>) -> Result<T, CoreError> {
+        let _guard = match self.lock.try_lock() {
+            Ok(guard) => guard,
+            Err(TryLockError::WouldBlock) => return Err(CoreError::AccessInProgress),
+            Err(TryLockError::Poisoned(error)) => error.into_inner(),
+        };
+        action()
+    }
+}
 
 fn mcp_paths(home: PathBuf, data_dir: PathBuf) -> Paths {
     Paths {
@@ -59,8 +81,8 @@ fn profile_picture(core: State<'_, Core>) -> Result<Option<String>, CoreError> {
     core.profile_picture()
 }
 
-/// `Core::save`; the sign-in URL opens in the default browser and is also emitted as the
-/// `auth-url` event, so the UI can offer it again if the browser did not open.
+/// `Core::save`; when given `save_id`, emits `save-ready` after reserving access.
+/// The sign-in URL opens in the default browser and is also emitted as `auth-url`.
 ///
 /// # Example
 ///
@@ -69,43 +91,70 @@ fn profile_picture(core: State<'_, Core>) -> Result<Option<String>, CoreError> {
 /// ```
 #[tauri::command(async)]
 fn save(
-    app: AppHandle,
+    window: WebviewWindow,
     core: State<'_, Core>,
+    access: State<'_, AccessCommands>,
     selection: Selection,
     business_selection: Option<BusinessSelection>,
     confirm_replace: bool,
+    save_id: Option<String>,
 ) -> Result<SaveOutcome, CoreError> {
-    set_tray_menu(&app, TrayState::Connecting);
-    let on_auth_url = |url: &str| {
-        let _ = app.opener().open_url(url, None::<&str>);
-        let _ = app.emit(AUTH_URL_EVENT, url);
-    };
-    let result = core.save_with_business(
-        &selection,
-        business_selection
-            .as_ref()
-            .unwrap_or(&BusinessSelection::new()),
-        confirm_replace,
-        &on_auth_url,
-    );
-    match &result {
-        Ok(SaveOutcome::Connected(status)) => {
-            set_tray_menu(&app, TrayState::Status(status.clone()))
+    access.run(|| {
+        let app = window.app_handle();
+        let start_error = Cell::new(false);
+        let on_auth_url = |url: &str| {
+            let _ = app.opener().open_url(url, None::<&str>);
+            let _ = app.emit(AUTH_URL_EVENT, url);
+        };
+        let result = core.save_with_business_identified(
+            &selection,
+            business_selection
+                .as_ref()
+                .unwrap_or(&BusinessSelection::new()),
+            confirm_replace,
+            save_id.as_deref(),
+            &|| {
+                set_tray_menu(app, TrayState::Connecting);
+                if let Some(id) = &save_id
+                    && window
+                        .emit_to(window.label(), SAVE_READY_EVENT, id)
+                        .is_err()
+                {
+                    start_error.set(true);
+                    let _ = core.cancel_login_for(id);
+                }
+            },
+            &on_auth_url,
+        );
+        let result = if start_error.get() {
+            Err(CoreError::Process(
+                "could not notify the window that save started".into(),
+            ))
+        } else {
+            result
+        };
+        if matches!(result, Err(CoreError::AccessInProgress)) {
+            return result;
         }
-        Ok(SaveOutcome::NeedsReplaceConfirmation) => refresh_tray_menu(&app, &core),
-        Err(_) => set_tray_menu(&app, TrayState::Error),
-    }
-    let removed_everything = selection.is_empty()
-        && business_selection
-            .as_ref()
-            .is_none_or(|business| business.is_empty());
-    if let Some(text) = save_text(&result, removed_everything) {
-        notify(&app, &text);
-    }
-    if matches!(result, Ok(SaveOutcome::Connected(_))) {
-        show_refreshed_window(&app, "install");
-    }
-    result
+        match &result {
+            Ok(SaveOutcome::Connected(status)) => {
+                set_tray_menu(app, TrayState::Status(status.clone()))
+            }
+            Ok(SaveOutcome::NeedsReplaceConfirmation) => refresh_tray_menu(app, &core),
+            Err(_) => set_tray_menu(app, TrayState::Error),
+        }
+        let removed_everything = selection.is_empty()
+            && business_selection
+                .as_ref()
+                .is_none_or(|business| business.is_empty());
+        if let Some(text) = save_text(&result, removed_everything) {
+            notify(app, &text);
+        }
+        if matches!(result, Ok(SaveOutcome::Connected(_))) {
+            show_refreshed_window(app, "install");
+        }
+        result
+    })
 }
 
 /// `Core::cancel_login`.
@@ -116,8 +165,11 @@ fn save(
 /// await invoke("cancel_login");
 /// ```
 #[tauri::command]
-fn cancel_login(core: State<'_, Core>) -> Result<(), CoreError> {
-    core.cancel_login()
+fn cancel_login(core: State<'_, Core>, save_id: Option<String>) -> Result<(), CoreError> {
+    match save_id {
+        Some(id) => core.cancel_login_for(&id),
+        None => core.cancel_login(),
+    }
 }
 
 /// `Core::revoke_all`; `confirmForeign` allows revoking credentials created by another app.
@@ -131,14 +183,20 @@ fn cancel_login(core: State<'_, Core>) -> Result<(), CoreError> {
 fn revoke_all(
     app: AppHandle,
     core: State<'_, Core>,
+    access: State<'_, AccessCommands>,
     confirm_foreign: bool,
 ) -> Result<RevokeOutcome, CoreError> {
-    let result = core.revoke_all(confirm_foreign);
-    refresh_tray_menu(&app, &core);
-    if let Some(text) = revoke_text(&result) {
-        notify(&app, &text);
-    }
-    result
+    access.run(|| {
+        let result = core.revoke_all(confirm_foreign);
+        if matches!(result, Err(CoreError::AccessInProgress)) {
+            return result;
+        }
+        refresh_tray_menu(&app, &core);
+        if let Some(text) = revoke_text(&result) {
+            notify(&app, &text);
+        }
+        result
+    })
 }
 
 /// Exports the granted skills to a user-selected path.
@@ -322,6 +380,7 @@ pub fn run() {
             let core = Core::system(paths);
             configure_fraccional_gws(&core)?;
             app.manage(core);
+            app.manage(AccessCommands::default());
             refresh_tray_menu(app.handle(), &app.state::<Core>());
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -469,8 +528,37 @@ pub fn run_mcp() -> Result<(), CoreError> {
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+    use std::sync::mpsc;
+    use std::time::Duration;
 
-    use super::mcp_paths;
+    use fraccional_googleworkspace_mcp_core::CoreError;
+
+    use super::{AccessCommands, mcp_paths};
+
+    #[test]
+    fn overlapping_access_commands_do_not_run_their_side_effects() {
+        let access = AccessCommands::default();
+        let (started, observed) = mpsc::channel();
+        let (release, released) = mpsc::channel();
+        std::thread::scope(|scope| {
+            let access_ref = &access;
+            let active = scope.spawn(move || {
+                access_ref.run(|| {
+                    started.send(()).unwrap();
+                    released.recv_timeout(Duration::from_secs(5)).unwrap();
+                    Ok(())
+                })
+            });
+            observed.recv_timeout(Duration::from_secs(5)).unwrap();
+            let result = access.run(|| -> Result<(), CoreError> {
+                panic!("rejected command must not change tray or notify")
+            });
+            assert_eq!(result, Err(CoreError::AccessInProgress));
+            release.send(()).unwrap();
+            assert_eq!(active.join().unwrap(), Ok(()));
+        });
+        assert_eq!(access.run(|| Ok(())), Ok(()));
+    }
 
     #[test]
     fn mcp_uses_the_same_app_data_folder_as_tauri() {

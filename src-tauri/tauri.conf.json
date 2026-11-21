@@ -42,6 +42,9 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -52,7 +55,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAwMDIzQTA4N0Y0RjQwMzMKUldRelFFOS9DRG9DQUJ3Sk00L1A3UFdMSkNiK04zRnhyK3NVdUxTbTFlUTd4WW8veHhScVlFWnYK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ4OUI2MDRGMTcwNEY5MDEKUldRQitRUVhUMkNiMk8wcnZqREVwYVZhU0c3TitIRlp1aGJleC9oRmNrM1F3ZkZoRDlybmlXOUUK",
       "endpoints": ["https://github.com/urvana/fraccional-googleworkspace-mcp/releases/latest/download/latest.json"]
     }
   }

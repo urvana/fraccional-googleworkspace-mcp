@@ -524,13 +524,7 @@ pub fn business_catalogue_for(granted: &BusinessSelection) -> Vec<BusinessConnec
         write,
         enabled: connector == BusinessConnector::Youtube
             || granted.contains(connector, Level::Read),
-        availability_reason: if connector == BusinessConnector::Youtube
-            || granted.contains(connector, Level::Read)
-        {
-            None
-        } else {
-            None
-        },
+        availability_reason: None,
     })
     .collect()
 }

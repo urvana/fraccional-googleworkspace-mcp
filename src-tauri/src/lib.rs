@@ -281,8 +281,8 @@ fn default_selection() -> Selection {
     scopes::default_selection()
 }
 
-/// How many scopes saving this selection would request (`scopes::login_scopes`) and the most
-/// one Google sign-in accepts (`scopes::MAX_LOGIN_SCOPES`), so the window can warn before Save.
+/// `scopes::scope_count`: how many scopes saving this selection sends to Google, and the most
+/// one consent request accepts, so the window can warn before Save.
 ///
 /// # Example
 ///
@@ -291,10 +291,7 @@ fn default_selection() -> Selection {
 /// ```
 #[tauri::command]
 fn scope_count(selection: Selection, business_selection: Option<BusinessSelection>) -> ScopeCount {
-    ScopeCount {
-        requested: scopes::login_scopes(&selection, &business_selection.unwrap_or_default()).len(),
-        max: scopes::MAX_LOGIN_SCOPES,
-    }
+    scopes::scope_count(&selection, &business_selection.unwrap_or_default())
 }
 
 /// `mcp_clients::install_prompt` for this executable. The prompt tells an agent how to connect

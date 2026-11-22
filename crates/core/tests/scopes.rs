@@ -2,7 +2,7 @@
 
 use fraccional_googleworkspace_mcp_core::scopes;
 use fraccional_googleworkspace_mcp_core::{
-    BusinessConnector, BusinessSelection, Level, Selection, Service,
+    BusinessConnector, BusinessSelection, Level, ScopeCount, Selection, Service,
 };
 
 #[test]
@@ -363,7 +363,7 @@ fn chat_leaves_out_reactions_and_pins_that_messages_and_spaces_cover() {
 }
 
 #[test]
-fn the_selection_that_hit_googles_scope_limit_now_fits_in_one_login() {
+fn the_selection_that_hit_googles_scope_limit_now_fits_in_one_consent_request() {
     // Full access to these services asked for 57 scopes (60 with the identity scopes gws
     // adds), and Google's consent screen failed after "Allow".
     let selection = Selection::from_levels(
@@ -381,14 +381,37 @@ fn the_selection_that_hit_googles_scope_limit_now_fits_in_one_login() {
         ]
         .map(|service| (service, Level::Write)),
     );
-    let requested = scopes::login_scopes(&selection, &BusinessSelection::new());
-    assert_eq!(requested.len(), 34);
-    assert!(requested.len() <= scopes::MAX_LOGIN_SCOPES);
+    // 34 selected scopes + the 3 identity scopes gws adds.
+    let count = scopes::scope_count(&selection, &BusinessSelection::new());
+    assert_eq!(
+        count,
+        ScopeCount {
+            requested: 37,
+            max: 50
+        }
+    );
+    assert!(count.requested <= count.max);
+}
+
+#[test]
+fn the_scope_count_includes_the_three_identity_scopes_gws_adds() {
+    assert_eq!(
+        scopes::scope_count(&Selection::new(), &BusinessSelection::new()),
+        ScopeCount {
+            requested: 3,
+            max: 50
+        }
+    );
+    let tasks = Selection::from_levels([(Service::Tasks, Level::Read)]);
+    assert_eq!(
+        scopes::scope_count(&tasks, &BusinessSelection::new()).requested,
+        4
+    );
 }
 
 #[test]
 fn full_access_to_the_whole_catalogue_is_still_over_googles_scope_limit() {
-    // Known: 54 Workspace scopes + 7 business scopes. `save` refuses this selection.
+    // Known: 54 Workspace + 7 business + 3 identity scopes. `save` refuses this selection.
     let everything = Selection::from_levels(Service::ALL.map(|service| (service, Level::Write)));
     let business = BusinessSelection::from_levels(
         [
@@ -401,9 +424,9 @@ fn full_access_to_the_whole_catalogue_is_still_over_googles_scope_limit() {
         ]
         .map(|connector| (connector, Level::Write)),
     );
-    let requested = scopes::login_scopes(&everything, &business);
-    assert_eq!(requested.len(), 61);
-    assert!(requested.len() > scopes::MAX_LOGIN_SCOPES);
+    let count = scopes::scope_count(&everything, &business);
+    assert_eq!(count.requested, 64);
+    assert!(count.requested > count.max);
 }
 
 #[test]

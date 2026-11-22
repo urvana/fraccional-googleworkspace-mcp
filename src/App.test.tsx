@@ -99,7 +99,7 @@ beforeEach(() => {
       case "profile_picture":
         return Promise.resolve(null);
       case "scope_count":
-        return Promise.resolve({ requested: 1, max: 47 });
+        return Promise.resolve({ requested: 3, max: 50 });
       default:
         return Promise.reject(new Error(`Unexpected command: ${command}`));
     }
@@ -109,20 +109,27 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Google scope limit", () => {
+  it("shows the scopes sent to Google next to Save, from 3/50 with nothing selected", async () => {
+    render(<App />);
+
+    expect(await screen.findByText("3/50")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("warns and blocks Save while the selection needs more scopes than one sign-in accepts", async () => {
     const defaults = mocks.invoke.getMockImplementation();
-    let requested = 52;
+    let requested = 55;
     mocks.invoke.mockImplementation((command: string, args?: unknown) =>
       command === "scope_count"
-        ? Promise.resolve({ requested, max: 47 })
+        ? Promise.resolve({ requested, max: 50 })
         : defaults?.(command, args),
     );
     const gmail = await openWithChanges();
 
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("pide 52 permisos");
-    expect(alert.textContent).toContain("hasta 47");
-    expect(screen.getByText("52/47")).toBeTruthy();
+    expect(alert.textContent).toContain("pide 55 permisos");
+    expect(alert.textContent).toContain("hasta 50");
+    expect(screen.getByText("55/50")).toBeTruthy();
     const save = screen.getByRole("button", { name: "Guardar" });
     expect((save as HTMLButtonElement).disabled).toBe(true);
 
@@ -131,7 +138,7 @@ describe("Google scope limit", () => {
     fireEvent.click(within(gmail).getByRole("button", { name: "Apagado" }));
 
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
-    expect(screen.getByText("40/47")).toBeTruthy();
+    expect(screen.getByText("40/50")).toBeTruthy();
     expect((save as HTMLButtonElement).disabled).toBe(false);
   });
 });

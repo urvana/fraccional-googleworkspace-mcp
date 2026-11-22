@@ -4,8 +4,8 @@
 use std::collections::HashSet;
 
 use crate::{
-    BusinessConnector, BusinessConnectorInfo, BusinessSelection, Level, Selection, Service,
-    ServiceCategory, ServiceInfo,
+    BusinessConnector, BusinessConnectorInfo, BusinessSelection, Level, ScopeCount, Selection,
+    Service, ServiceCategory, ServiceInfo,
 };
 
 /// Prefix of every Google scope URL in the catalogue.
@@ -18,18 +18,17 @@ use crate::{
 /// ```
 pub const SCOPE_PREFIX: &str = "https://www.googleapis.com/auth/";
 
-/// Most scopes one `gws auth login` may request. Google's consent screen fails with an
-/// internal error (RPC status 13, no redirect) when one request has more than 50 scopes
-/// (measured: 50 passes, 51 fails), and gws always adds `openid`, `userinfo.email` and
-/// `userinfo.profile`.
+/// Most scopes that one Google consent request may hold. Above it, the consent screen fails
+/// after "Allow" with an internal error (RPC status 13) and never redirects. Google does not
+/// document this limit. Measured on 2026-11-21: 50 scopes pass, 51 fail.
 ///
 /// # Example
 ///
 /// ```
-/// use fraccional_googleworkspace_mcp_core::scopes::MAX_LOGIN_SCOPES;
-/// assert_eq!(MAX_LOGIN_SCOPES, 47);
+/// use fraccional_googleworkspace_mcp_core::scopes::GOOGLE_MAX_SCOPES;
+/// assert_eq!(GOOGLE_MAX_SCOPES, 50);
 /// ```
-pub const MAX_LOGIN_SCOPES: usize = 50 - 3;
+pub const GOOGLE_MAX_SCOPES: usize = 50;
 
 /// Default selection: Read for the common Workspace services; optional services and
 /// administrative capabilities are off by default.
@@ -100,7 +99,8 @@ pub fn scopes_for(selection: &Selection) -> Vec<String> {
     )
 }
 
-/// Every scope one login requests: the Workspace scopes, then the business connector scopes.
+/// The scopes that the app passes to one `gws auth login`: the Workspace scopes, then the
+/// business connector scopes. gws adds its identity scopes on top (see [`scope_count`]).
 ///
 /// # Example
 ///
@@ -126,8 +126,37 @@ pub fn login_scopes(selection: &Selection, business_selection: &BusinessSelectio
     scopes
 }
 
-/// Leaves out each scope whose [`broader_scope`] is in the same list, so the login stays
-/// under [`MAX_LOGIN_SCOPES`].
+/// Counts the scopes that one save of this selection sends to Google. The count includes the
+/// identity scopes that gws adds to the [`login_scopes`]. The limit is [`GOOGLE_MAX_SCOPES`].
+/// `save` refuses a selection over the limit. The window shows the count next to Save.
+///
+/// # Example
+///
+/// ```
+/// use fraccional_googleworkspace_mcp_core::{scopes, BusinessSelection, ScopeCount, Selection};
+/// let count = scopes::scope_count(&Selection::new(), &BusinessSelection::new());
+/// assert_eq!(count, ScopeCount { requested: 3, max: 50 });
+/// ```
+pub fn scope_count(selection: &Selection, business_selection: &BusinessSelection) -> ScopeCount {
+    // gws v0.22.5 adds these to every login that does not hold them (`auth_commands.rs`).
+    const GWS_IDENTITY_SCOPES: [&str; 3] = [
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+    ];
+    let scopes = login_scopes(selection, business_selection);
+    let added_by_gws = GWS_IDENTITY_SCOPES
+        .iter()
+        .filter(|identity| !scopes.iter().any(|scope| scope == *identity))
+        .count();
+    ScopeCount {
+        requested: scopes.len() + added_by_gws,
+        max: GOOGLE_MAX_SCOPES,
+    }
+}
+
+/// Leaves out each scope whose [`broader_scope`] is in the same list. Fewer scopes keep the
+/// consent request under [`GOOGLE_MAX_SCOPES`].
 ///
 /// # Example
 ///

@@ -352,15 +352,16 @@ pub struct Status {
     pub foreign_credentials: bool,
 }
 
-/// How many scopes a save of a selection requests, and the most that one Google sign-in may
-/// request (`scopes::MAX_LOGIN_SCOPES`). The window shows it next to Save.
+/// How many scopes a save of a selection sends to Google, including the identity scopes that
+/// gws adds, and the most that one Google consent request may hold
+/// (`scopes::GOOGLE_MAX_SCOPES`). The window shows it next to Save.
 ///
 /// # Example
 ///
 /// ```
 /// use fraccional_googleworkspace_mcp_core::ScopeCount;
-/// let count = ScopeCount { requested: 52, max: 47 };
-/// assert_eq!(serde_json::to_string(&count).unwrap(), r#"{"requested":52,"max":47}"#);
+/// let count = ScopeCount { requested: 55, max: 50 };
+/// assert_eq!(serde_json::to_string(&count).unwrap(), r#"{"requested":55,"max":50}"#);
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScopeCount {
@@ -586,8 +587,9 @@ pub enum CoreError {
         "Access was removed, but the new Google sign-in did not finish. Save again to reconnect."
     )]
     AccessRemoved,
-    /// The selection needs more scopes than Google accepts in one sign-in
-    /// ([`crate::scopes::MAX_LOGIN_SCOPES`]). `save` returns it before it changes anything.
+    /// The selection sends more scopes to Google than one consent request accepts
+    /// ([`crate::scopes::GOOGLE_MAX_SCOPES`]). `requested` counts the identity scopes that gws
+    /// adds ([`crate::scopes::scope_count`]). `save` returns it before it changes anything.
     /// The message is Spanish, for the person.
     #[error(
         "Google acepta hasta {max} permisos por inicio de sesión y esta selección pide {requested}. Quita algunos servicios o cambia alguno a solo lectura."

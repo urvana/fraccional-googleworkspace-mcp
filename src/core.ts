@@ -48,8 +48,8 @@ export type Status = {
 };
 
 /**
- * What the `scope_count` command reports: the scopes a save of the selection would request,
- * and the most one Google sign-in accepts.
+ * What the `scope_count` command reports: the scopes a save of the selection sends to Google
+ * (including the identity scopes gws adds), and the most one consent request accepts.
  */
 export type ScopeCount = { requested: number; max: number };
 

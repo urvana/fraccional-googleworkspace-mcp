@@ -1007,7 +1007,7 @@ export default function App() {
             {scopeCount !== null && (
               <span
                 className={`text-xs tabular-nums ${scopeCountClass}`}
-                title={`Permisos de Google que pide esta selección, de un máximo de ${scopeCount.max} por inicio de sesión.`}
+                title={`Permisos de Google que pide esta selección, incluidos los que identifican tu cuenta. Google acepta hasta ${scopeCount.max} por inicio de sesión.`}
               >
                 {`${scopeCount.requested}/${scopeCount.max}`}
               </span>

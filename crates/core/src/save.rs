@@ -17,7 +17,7 @@ impl Core {
     /// If the old access was revoked first and the login is then cancelled or fails, returns
     /// [`CoreError::AccessRemoved`] (nothing is connected any more).
     /// Returns [`CoreError::TooManyScopes`] before changing anything when the selection needs
-    /// more than [`scopes::MAX_LOGIN_SCOPES`] scopes.
+    /// more than [`scopes::GOOGLE_MAX_SCOPES`] scopes in total ([`scopes::scope_count`]).
     /// Returns [`CoreError::AccessInProgress`] if this Core is already saving or revoking.
     ///
     /// # Example
@@ -120,13 +120,14 @@ impl Core {
             return Ok(SaveOutcome::Connected(self.status()?));
         }
         // Checked before any revocation: a refused login must leave the old access in place.
-        let requested_scopes = scopes::login_scopes(&selection, &business_selection);
-        if requested_scopes.len() > scopes::MAX_LOGIN_SCOPES {
+        let count = scopes::scope_count(&selection, &business_selection);
+        if count.requested > count.max {
             return Err(CoreError::TooManyScopes {
-                requested: requested_scopes.len(),
-                max: scopes::MAX_LOGIN_SCOPES,
+                requested: count.requested,
+                max: count.max,
             });
         }
+        let requested_scopes = scopes::login_scopes(&selection, &business_selection);
         let gws = self.ensure_gws()?;
         let (granted, business_granted) = if foreign {
             (Selection::new(), BusinessSelection::new())

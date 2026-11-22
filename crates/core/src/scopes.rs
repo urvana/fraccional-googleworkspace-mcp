@@ -18,6 +18,19 @@ use crate::{
 /// ```
 pub const SCOPE_PREFIX: &str = "https://www.googleapis.com/auth/";
 
+/// Most scopes one `gws auth login` may request. Google's consent screen fails with an
+/// internal error (RPC status 13, no redirect) when one request has more than 50 scopes
+/// (measured: 50 passes, 51 fails), and gws always adds `openid`, `userinfo.email` and
+/// `userinfo.profile`.
+///
+/// # Example
+///
+/// ```
+/// use fraccional_googleworkspace_mcp_core::scopes::MAX_LOGIN_SCOPES;
+/// assert_eq!(MAX_LOGIN_SCOPES, 47);
+/// ```
+pub const MAX_LOGIN_SCOPES: usize = 50 - 3;
+
 /// Default selection: Read for the common Workspace services; optional services and
 /// administrative capabilities are off by default.
 ///
@@ -61,7 +74,9 @@ pub fn normalize(selection: &Selection) -> Selection {
     normalized
 }
 
-/// Full scope URLs for a selection (normalised first), without duplicates.
+/// Full scope URLs for a selection (normalised first), without duplicates. A read-only
+/// scope is left out when its broader scope is also requested (`calendar` covers
+/// `calendar.readonly`).
 ///
 /// # Example
 ///
@@ -69,16 +84,82 @@ pub fn normalize(selection: &Selection) -> Selection {
 /// use fraccional_googleworkspace_mcp_core::{scopes, Level, Selection, Service};
 /// let urls = scopes::scopes_for(&Selection::from_levels([(Service::Tasks, Level::Read)]));
 /// assert_eq!(urls, ["https://www.googleapis.com/auth/tasks.readonly"]);
+/// let urls = scopes::scopes_for(&Selection::from_levels([(Service::Tasks, Level::Write)]));
+/// assert_eq!(urls, ["https://www.googleapis.com/auth/tasks"]);
 /// ```
 pub fn scopes_for(selection: &Selection) -> Vec<String> {
     let mut seen = HashSet::new();
-    normalize(selection)
-        .iter()
-        .filter(|level| level.level == Level::Read || write_supported(level.service))
-        .flat_map(|level| level_scopes(level.service, level.level))
-        .map(scope_url)
-        .filter(|scope| seen.insert(scope.clone()))
+    without_covered_scopes(
+        normalize(selection)
+            .iter()
+            .filter(|level| level.level == Level::Read || write_supported(level.service))
+            .flat_map(|level| level_scopes(level.service, level.level))
+            .map(scope_url)
+            .filter(|scope| seen.insert(scope.clone()))
+            .collect(),
+    )
+}
+
+/// Every scope one login requests: the Workspace scopes, then the business connector scopes.
+///
+/// # Example
+///
+/// ```
+/// use fraccional_googleworkspace_mcp_core::{
+///     scopes, BusinessConnector, BusinessSelection, Level, Selection, Service,
+/// };
+/// let urls = scopes::login_scopes(
+///     &Selection::from_levels([(Service::Tasks, Level::Read)]),
+///     &BusinessSelection::from_levels([(BusinessConnector::Youtube, Level::Read)]),
+/// );
+/// assert_eq!(
+///     urls,
+///     [
+///         "https://www.googleapis.com/auth/tasks.readonly",
+///         "https://www.googleapis.com/auth/youtube.readonly",
+///     ]
+/// );
+/// ```
+pub fn login_scopes(selection: &Selection, business_selection: &BusinessSelection) -> Vec<String> {
+    let mut scopes = scopes_for(selection);
+    scopes.extend(business_scopes_for(business_selection));
+    scopes
+}
+
+/// Leaves out each scope whose [`broader_scope`] is in the same list, so the login stays
+/// under [`MAX_LOGIN_SCOPES`].
+///
+/// # Example
+///
+/// ```ignore
+/// let urls = without_covered_scopes(vec![url("calendar.readonly"), url("calendar")]);
+/// assert_eq!(urls, [url("calendar")]);
+/// ```
+fn without_covered_scopes(scopes: Vec<String>) -> Vec<String> {
+    let requested: HashSet<String> = scopes.iter().cloned().collect();
+    scopes
+        .into_iter()
+        .filter(|scope| broader_scope(scope).is_none_or(|broader| !requested.contains(broader)))
         .collect()
+}
+
+/// The broader scope that every Google API method accepting `scope` also accepts: `X` for
+/// `X.readonly`, and `https://mail.google.com/` for `gmail.readonly`
+/// (docs/research/oauth-scope-reduction.md). A login that requests the broader scope leaves
+/// `scope` out, and status counts `scope` as granted when the broader one is.
+///
+/// # Example
+///
+/// ```ignore
+/// assert_eq!(broader_scope(&url("calendar.readonly")), Some(url("calendar").as_str()));
+/// assert_eq!(broader_scope(&url("gmail.readonly")), Some("https://mail.google.com/"));
+/// ```
+fn broader_scope(scope: &str) -> Option<&str> {
+    if scope == format!("{SCOPE_PREFIX}gmail.readonly") {
+        Some("https://mail.google.com/")
+    } else {
+        scope.strip_suffix(".readonly")
+    }
 }
 
 /// Scope names of one service level: the spec table. Entries may be full URLs
@@ -92,24 +173,22 @@ pub fn scopes_for(selection: &Selection) -> Vec<String> {
 fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
     // Read: every read-only scope of the service's APIs. Write: every other user-facing scope
     // that a broader scope does not already cover (e.g. `drive` covers `drive.file`).
+    // A scope that a broader scope of the same level covers in every API method is left out
+    // (docs/research/oauth-scope-reduction.md). `gmail.settings.sharing` is left out because
+    // only service accounts with domain-wide delegation can use it.
     match (service, level) {
         (Service::Gmail, Level::Read) => &["gmail.readonly"],
-        (Service::Gmail, Level::Write) => &[
-            "https://mail.google.com/",
-            "gmail.settings.basic",
-            "gmail.settings.sharing",
-        ],
+        (Service::Gmail, Level::Write) => &["https://mail.google.com/", "gmail.settings.basic"],
         (Service::Calendar, Level::Read) => &["calendar.readonly"],
         (Service::Calendar, Level::Write) => &["calendar"],
+        // `chat.messages*` covers reactions and `chat.spaces*` covers pins.
         (Service::Chat, Level::Read) => &[
             "chat.spaces.readonly",
             "chat.messages.readonly",
             "chat.memberships.readonly",
-            "chat.messages.reactions.readonly",
             "chat.users.readstate.readonly",
             "chat.users.sections.readonly",
             "chat.users.availability.readonly",
-            "chat.spaces.pins.readonly",
             "chat.customemojis.readonly",
             "chat.admin.spaces.readonly",
             "chat.admin.memberships.readonly",
@@ -118,12 +197,10 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
             "chat.spaces",
             "chat.memberships",
             "chat.messages",
-            "chat.messages.reactions",
             "chat.users.readstate",
             "chat.users.sections",
             "chat.users.availability",
             "chat.users.spacesettings",
-            "chat.spaces.pins",
             "chat.customemojis",
             "chat.delete",
             "chat.admin.spaces",
@@ -133,7 +210,8 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
         (Service::Meet, Level::Read) => &["meetings.space.readonly"],
         (Service::Meet, Level::Write) => &["meetings.space.created", "meetings.space.settings"],
         (Service::Drive, Level::Read) => &["drive.readonly", "drive.apps.readonly"],
-        (Service::Drive, Level::Write) => &["drive", "drive.scripts"],
+        // `drive` covers `drive.scripts`.
+        (Service::Drive, Level::Write) => &["drive"],
         (Service::Docs, Level::Read) => &["documents.readonly"],
         (Service::Docs, Level::Write) => &["documents"],
         (Service::Sheets, Level::Read) => &["spreadsheets.readonly"],
@@ -161,9 +239,9 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
             "admin.reports.usage.readonly",
         ],
         (Service::AdminReports, Level::Write) => &["admin.reports.audit.readonly"],
+        // `admin.directory.user*` covers aliases and `device.mobile` covers device actions.
         (Service::AdminDirectory, Level::Read) => &[
             "admin.directory.user.readonly",
-            "admin.directory.user.alias.readonly",
             "admin.directory.orgunit.readonly",
             "admin.directory.domain.readonly",
             "admin.directory.customer.readonly",
@@ -176,7 +254,6 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
         ],
         (Service::AdminDirectory, Level::Write) => &[
             "admin.directory.user",
-            "admin.directory.user.alias",
             "admin.directory.user.security",
             "admin.directory.orgunit",
             "admin.directory.domain",
@@ -185,17 +262,12 @@ fn level_scopes(service: Service, level: Level) -> &'static [&'static str] {
             "admin.directory.rolemanagement",
             "admin.directory.resource.calendar",
             "admin.directory.device.mobile",
-            "admin.directory.device.mobile.action",
             "admin.directory.device.chromeos",
             "admin.chrome.printers",
         ],
-        (Service::AdminGroups, Level::Read) => &[
-            "admin.directory.group.readonly",
-            "admin.directory.group.member.readonly",
-        ],
-        (Service::AdminGroups, Level::Write) => {
-            &["admin.directory.group", "admin.directory.group.member"]
-        }
+        // `admin.directory.group*` covers members.
+        (Service::AdminGroups, Level::Read) => &["admin.directory.group.readonly"],
+        (Service::AdminGroups, Level::Write) => &["admin.directory.group"],
         (Service::CloudIdentity, Level::Read) => &[
             "cloud-identity.groups.readonly",
             "cloud-identity.policies.readonly",
@@ -225,15 +297,26 @@ pub fn scopes_arg(selection: &Selection) -> String {
     scopes_for(selection).join(",")
 }
 
-/// Full scope URLs for a business connector selection.
+/// Full scope URLs for a business connector selection (normalised first), without
+/// duplicates and without read-only scopes that a broader requested scope covers.
+///
+/// # Example
+///
+/// ```
+/// use fraccional_googleworkspace_mcp_core::{scopes, BusinessConnector, BusinessSelection, Level};
+/// let selection = BusinessSelection::from_levels([(BusinessConnector::Youtube, Level::Write)]);
+/// assert_eq!(scopes::business_scopes_for(&selection), ["https://www.googleapis.com/auth/youtube"]);
+/// ```
 pub fn business_scopes_for(selection: &BusinessSelection) -> Vec<String> {
     let mut seen = HashSet::new();
-    business_normalize(selection)
-        .iter()
-        .flat_map(|access| business_level_scopes(access.connector, access.level))
-        .map(scope_url)
-        .filter(|scope| seen.insert(scope.clone()))
-        .collect()
+    without_covered_scopes(
+        business_normalize(selection)
+            .iter()
+            .flat_map(|access| business_level_scopes(access.connector, access.level))
+            .map(scope_url)
+            .filter(|scope| seen.insert(scope.clone()))
+            .collect(),
+    )
 }
 
 /// Normalises business access so Write always includes Read.
@@ -299,8 +382,9 @@ pub fn business_selection_from_scopes(granted: &[String]) -> BusinessSelection {
 }
 
 /// Granted scopes (as `gws auth status` prints them) -> granted levels. A level counts only
-/// if all its scopes are granted; identity scopes (`openid`, `email`, `profile`,
-/// `userinfo.email`, `userinfo.profile`) are ignored.
+/// if all its scopes are granted (a read-only scope also counts when its broader scope is
+/// granted); identity scopes (`openid`, `email`, `profile`, `userinfo.email`,
+/// `userinfo.profile`) are ignored.
 ///
 /// # Example
 ///
@@ -327,9 +411,22 @@ pub fn selection_from_scopes(granted: &[String]) -> Selection {
     selection
 }
 
+/// Whether `scope` is granted, directly or through its [`broader_scope`] (logins leave
+/// `scope` out when they request the broader one).
+///
+/// # Example
+///
+/// ```ignore
+/// assert!(has_scope(&[url("calendar")], "calendar.readonly"));
+/// assert!(has_scope(&["https://mail.google.com/".into()], "gmail.readonly"));
+/// assert!(!has_scope(&[url("calendar.readonly")], "calendar"));
+/// ```
 fn has_scope(granted: &[String], scope: &str) -> bool {
     let expected = scope_url(&scope);
-    granted.iter().any(|granted| granted == &expected)
+    let broader = broader_scope(&expected);
+    granted
+        .iter()
+        .any(|granted| granted == &expected || Some(granted.as_str()) == broader)
 }
 
 /// Plain-language labels for every service row, in UI order.

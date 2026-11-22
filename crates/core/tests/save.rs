@@ -197,6 +197,30 @@ fn removing_a_granted_level_revokes_and_logs_out_before_signing_in_with_the_redu
 }
 
 #[test]
+fn a_selection_over_googles_scope_limit_is_refused_before_anything_changes() {
+    let f = fixture();
+    f.save_with_business(
+        &Selection::new(),
+        &BusinessSelection::from_levels([(BusinessConnector::Youtube, Level::Read)]),
+    );
+    // Full access to every service and no YouTube: a normal save would revoke YouTube first.
+    let everything = Selection::from_levels(Service::ALL.map(|service| (service, Level::Write)));
+
+    let result = f.core.save(&everything, false, &|_| {});
+
+    let Err(CoreError::TooManyScopes { requested, max }) = result else {
+        panic!("expected TooManyScopes, got {result:?}");
+    };
+    assert!(requested > max);
+    assert_eq!(
+        f.changing_calls(),
+        [login(&[YOUTUBE_READ])],
+        "no export, logout or second login"
+    );
+    assert!(f.http.requests().is_empty(), "nothing revoked at Google");
+}
+
+#[test]
 fn empty_selection_revokes_everything_and_does_not_sign_in() {
     let f = fixture();
     f.save(&Selection::from_levels([(Service::Gmail, Level::Read)]));

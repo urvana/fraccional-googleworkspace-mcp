@@ -34,6 +34,7 @@ import {
   HAS_LEVEL,
   type RevokeOutcome,
   type SaveOutcome,
+  type ScopeCount,
   type Selection,
   type Service,
   type ServiceInfo,
@@ -244,6 +245,7 @@ export default function App() {
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [update, setUpdate] = useState<Update | null>(null);
+  const [scopeCount, setScopeCount] = useState<ScopeCount | null>(null);
 
   useEffect(
     () => () => {
@@ -269,6 +271,41 @@ export default function App() {
       unlisten.then((stop) => stop());
     };
   }, [windowName]);
+
+  useEffect(() => {
+    if (windowName === "skills" || windowName === "install") {
+      return;
+    }
+    let current = true;
+    /**
+     * Asks the core how many scopes saving the current selection would request, so the
+     * window can warn before Google's consent screen fails.
+     *
+     * @example
+     * await loadScopeCount();
+     */
+    async function loadScopeCount() {
+      try {
+        const count = await invoke<ScopeCount>("scope_count", {
+          selection,
+          businessSelection,
+        });
+        if (current) {
+          setScopeCount(count ?? null);
+        }
+      } catch {
+        // No early warning then; `save` still refuses a selection over the limit.
+        if (current) {
+          setScopeCount(null);
+        }
+      }
+    }
+    loadScopeCount();
+    return () => {
+      current = false;
+    };
+  }, [windowName, selection, businessSelection]);
+
   if (windowName === "skills") {
     return <SkillsWindow />;
   }
@@ -659,7 +696,16 @@ export default function App() {
       : selectionKey(selection) !== selectionKey(status.granted) ||
         selectionKey(businessSelection) !==
           selectionKey(status.business_granted));
-  const saveDisabled = disabled || !hasChanges;
+  // Google's consent screen fails after "Allow" when one sign-in asks for too many scopes.
+  let scopeLimitText: string | null = null;
+  if (scopeCount !== null && scopeCount.requested > scopeCount.max) {
+    scopeLimitText = `Esta selección pide ${scopeCount.requested} permisos y Google acepta hasta ${scopeCount.max} por inicio de sesión. Quita algunos servicios o cambia alguno a solo lectura.`;
+  }
+  const saveDisabled = disabled || !hasChanges || scopeLimitText !== null;
+  let scopeCountClass = "text-slate-500 dark:text-zinc-400";
+  if (scopeLimitText !== null) {
+    scopeCountClass = "font-semibold text-amber-700 dark:text-amber-300";
+  }
   const setAllAccess = (access: AccessChoice) => {
     let nextSelection = selection;
     for (const info of catalogue) {
@@ -918,6 +964,14 @@ export default function App() {
         </section>
       </main>
       <div className="fixed bottom-3 left-1/2 z-30 w-[calc(100%-1.5rem)] max-w-xl -translate-x-1/2 rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 shadow-[0_8px_30px_rgba(15,23,42,0.14)] backdrop-blur dark:border-zinc-700/80 dark:bg-zinc-950/95 dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+        {scopeLimitText !== null && (
+          <p
+            role="alert"
+            className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+          >
+            {scopeLimitText}
+          </p>
+        )}
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
             {profilePicture !== null ? (
@@ -950,6 +1004,14 @@ export default function App() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {scopeCount !== null && (
+              <span
+                className={`text-xs tabular-nums ${scopeCountClass}`}
+                title={`Permisos de Google que pide esta selección, de un máximo de ${scopeCount.max} por inicio de sesión.`}
+              >
+                {`${scopeCount.requested}/${scopeCount.max}`}
+              </span>
+            )}
             {busy === "save" && (
               <button
                 type="button"

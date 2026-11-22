@@ -98,6 +98,8 @@ beforeEach(() => {
         return Promise.resolve([]);
       case "profile_picture":
         return Promise.resolve(null);
+      case "scope_count":
+        return Promise.resolve({ requested: 1, max: 47 });
       default:
         return Promise.reject(new Error(`Unexpected command: ${command}`));
     }
@@ -105,6 +107,34 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+describe("Google scope limit", () => {
+  it("warns and blocks Save while the selection needs more scopes than one sign-in accepts", async () => {
+    const defaults = mocks.invoke.getMockImplementation();
+    let requested = 52;
+    mocks.invoke.mockImplementation((command: string, args?: unknown) =>
+      command === "scope_count"
+        ? Promise.resolve({ requested, max: 47 })
+        : defaults?.(command, args),
+    );
+    const gmail = await openWithChanges();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("pide 52 permisos");
+    expect(alert.textContent).toContain("hasta 47");
+    expect(screen.getByText("52/47")).toBeTruthy();
+    const save = screen.getByRole("button", { name: "Guardar" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+
+    // Still a change against the granted Gmail read, now under the limit.
+    requested = 40;
+    fireEvent.click(within(gmail).getByRole("button", { name: "Apagado" }));
+
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(screen.getByText("40/47")).toBeTruthy();
+    expect((save as HTMLButtonElement).disabled).toBe(false);
+  });
+});
 
 async function openWithChanges() {
   render(<App />);

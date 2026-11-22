@@ -62,8 +62,8 @@ pub use system_http::SystemHttp;
 pub use system_runner::SystemRunner;
 pub use types::{
     BusinessAccess, BusinessConnector, BusinessConnectorInfo, BusinessSelection, CoreError,
-    KeyStorage, Level, Paths, RevokeOutcome, SaveOutcome, Selection, Service, ServiceCategory,
-    ServiceInfo, ServiceLevel, Settings, Status,
+    KeyStorage, Level, Paths, RevokeOutcome, SaveOutcome, ScopeCount, Selection, Service,
+    ServiceCategory, ServiceInfo, ServiceLevel, Settings, Status,
 };
 
 /// The core. Thread-safe: the Tauri layer shares one instance across commands, so

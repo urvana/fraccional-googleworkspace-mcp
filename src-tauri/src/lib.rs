@@ -8,7 +8,8 @@ use std::sync::{Mutex, TryLockError};
 
 use fraccional_googleworkspace_mcp_core::{
     BusinessConnectorInfo, BusinessSelection, Core, CoreError, KeyStorage, Paths, RevokeOutcome,
-    SaveOutcome, Selection, ServiceInfo, Status, mcp, mcp_clients, mcp_extension, scopes, skills,
+    SaveOutcome, ScopeCount, Selection, ServiceInfo, Status, mcp, mcp_clients, mcp_extension,
+    scopes, skills,
 };
 use serde_json::Value;
 use tauri::{
@@ -280,6 +281,22 @@ fn default_selection() -> Selection {
     scopes::default_selection()
 }
 
+/// How many scopes saving this selection would request (`scopes::login_scopes`) and the most
+/// one Google sign-in accepts (`scopes::MAX_LOGIN_SCOPES`), so the window can warn before Save.
+///
+/// # Example
+///
+/// ```js
+/// const { requested, max } = await invoke("scope_count", { selection, businessSelection });
+/// ```
+#[tauri::command]
+fn scope_count(selection: Selection, business_selection: Option<BusinessSelection>) -> ScopeCount {
+    ScopeCount {
+        requested: scopes::login_scopes(&selection, &business_selection.unwrap_or_default()).len(),
+        max: scopes::MAX_LOGIN_SCOPES,
+    }
+}
+
 /// `mcp_clients::install_prompt` for this executable. The prompt tells an agent how to connect
 /// itself to fraccional-googleworkspace-mcp. It fails with `UnstableExe` when this executable runs from a path
 /// that will not last (for example a macOS App Translocation folder).
@@ -409,6 +426,7 @@ pub fn run() {
             business_catalogue,
             youtube_channel,
             default_selection,
+            scope_count,
             install_prompt,
             install_mcp_extension,
             skills_install_command

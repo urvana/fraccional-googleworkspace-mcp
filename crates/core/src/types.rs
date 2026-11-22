@@ -352,6 +352,22 @@ pub struct Status {
     pub foreign_credentials: bool,
 }
 
+/// How many scopes a save of a selection requests, and the most that one Google sign-in may
+/// request (`scopes::MAX_LOGIN_SCOPES`). The window shows it next to Save.
+///
+/// # Example
+///
+/// ```
+/// use fraccional_googleworkspace_mcp_core::ScopeCount;
+/// let count = ScopeCount { requested: 52, max: 47 };
+/// assert_eq!(serde_json::to_string(&count).unwrap(), r#"{"requested":52,"max":47}"#);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScopeCount {
+    pub requested: usize,
+    pub max: usize,
+}
+
 /// Result of `Core::save`.
 ///
 /// # Example
@@ -570,6 +586,13 @@ pub enum CoreError {
         "Access was removed, but the new Google sign-in did not finish. Save again to reconnect."
     )]
     AccessRemoved,
+    /// The selection needs more scopes than Google accepts in one sign-in
+    /// ([`crate::scopes::MAX_LOGIN_SCOPES`]). `save` returns it before it changes anything.
+    /// The message is Spanish, for the person.
+    #[error(
+        "Google acepta hasta {max} permisos por inicio de sesión y esta selección pide {requested}. Quita algunos servicios o cambia alguno a solo lectura."
+    )]
+    TooManyScopes { requested: usize, max: usize },
 }
 
 impl From<std::io::Error> for CoreError {

@@ -72,11 +72,9 @@ const READ_ROWS: [(Service, &[&str]); 15] = [
             "chat.spaces.readonly",
             "chat.messages.readonly",
             "chat.memberships.readonly",
-            "chat.messages.reactions.readonly",
             "chat.users.readstate.readonly",
             "chat.users.sections.readonly",
             "chat.users.availability.readonly",
-            "chat.spaces.pins.readonly",
             "chat.customemojis.readonly",
             "chat.admin.spaces.readonly",
             "chat.admin.memberships.readonly",
@@ -117,7 +115,6 @@ const READ_ROWS: [(Service, &[&str]); 15] = [
         Service::AdminDirectory,
         &[
             "admin.directory.user.readonly",
-            "admin.directory.user.alias.readonly",
             "admin.directory.orgunit.readonly",
             "admin.directory.domain.readonly",
             "admin.directory.customer.readonly",
@@ -129,13 +126,7 @@ const READ_ROWS: [(Service, &[&str]); 15] = [
             "admin.chrome.printers.readonly",
         ],
     ),
-    (
-        Service::AdminGroups,
-        &[
-            "admin.directory.group.readonly",
-            "admin.directory.group.member.readonly",
-        ],
-    ),
+    (Service::AdminGroups, &["admin.directory.group.readonly"]),
     (
         Service::CloudIdentity,
         &[
@@ -151,13 +142,10 @@ const READ_ROWS: [(Service, &[&str]); 15] = [
 /// Scopes added by Full access, on top of the Read scopes; broader scopes already cover
 /// narrower ones (`drive` covers `drive.file`, `mail.google.com` covers `gmail.modify`).
 const WRITE_ROWS: [(Service, &[&str]); 14] = [
+    // No `gmail.settings.sharing`: only service accounts with domain-wide delegation can use it.
     (
         Service::Gmail,
-        &[
-            "https://mail.google.com/",
-            "gmail.settings.basic",
-            "gmail.settings.sharing",
-        ],
+        &["https://mail.google.com/", "gmail.settings.basic"],
     ),
     (Service::Calendar, &["calendar"]),
     (
@@ -166,12 +154,10 @@ const WRITE_ROWS: [(Service, &[&str]); 14] = [
             "chat.spaces",
             "chat.memberships",
             "chat.messages",
-            "chat.messages.reactions",
             "chat.users.readstate",
             "chat.users.sections",
             "chat.users.availability",
             "chat.users.spacesettings",
-            "chat.spaces.pins",
             "chat.customemojis",
             "chat.delete",
             "chat.admin.spaces",
@@ -183,7 +169,7 @@ const WRITE_ROWS: [(Service, &[&str]); 14] = [
         Service::Meet,
         &["meetings.space.created", "meetings.space.settings"],
     ),
-    (Service::Drive, &["drive", "drive.scripts"]),
+    (Service::Drive, &["drive"]),
     (Service::Docs, &["documents"]),
     (Service::Sheets, &["spreadsheets"]),
     (Service::Slides, &["presentations"]),
@@ -194,7 +180,6 @@ const WRITE_ROWS: [(Service, &[&str]); 14] = [
         Service::AdminDirectory,
         &[
             "admin.directory.user",
-            "admin.directory.user.alias",
             "admin.directory.user.security",
             "admin.directory.orgunit",
             "admin.directory.domain",
@@ -203,15 +188,11 @@ const WRITE_ROWS: [(Service, &[&str]); 14] = [
             "admin.directory.rolemanagement",
             "admin.directory.resource.calendar",
             "admin.directory.device.mobile",
-            "admin.directory.device.mobile.action",
             "admin.directory.device.chromeos",
             "admin.chrome.printers",
         ],
     ),
-    (
-        Service::AdminGroups,
-        &["admin.directory.group", "admin.directory.group.member"],
-    ),
+    (Service::AdminGroups, &["admin.directory.group"]),
     (
         Service::CloudIdentity,
         &[
@@ -236,10 +217,19 @@ fn every_read_row_maps_to_exactly_its_scopes() {
 }
 
 #[test]
-fn every_write_row_maps_to_its_write_scopes_plus_its_read_scopes() {
+fn every_write_row_maps_to_its_write_scopes_plus_the_read_scopes_they_do_not_cover() {
     for (service, write) in WRITE_ROWS {
         let read = READ_ROWS.iter().find(|row| row.0 == service).unwrap().1;
-        let expected: Vec<&str> = read.iter().chain(write).copied().collect();
+        // `X` covers `X.readonly` and `https://mail.google.com/` covers `gmail.readonly`, so a
+        // login that asks for the broader scope leaves the read-only one out.
+        let uncovered_read = read.iter().filter(|scope| {
+            let broader = match **scope {
+                "gmail.readonly" => Some("https://mail.google.com/"),
+                _ => scope.strip_suffix(".readonly"),
+            };
+            broader.is_none_or(|broader| !write.contains(&broader))
+        });
+        let expected: Vec<&str> = uncovered_read.chain(write).copied().collect();
         let selection = Selection::from_levels([(service, Level::Write)]);
         assert_eq!(
             sorted_scopes(&selection),
@@ -268,7 +258,10 @@ fn empty_selection_has_no_scopes() {
 
 #[test]
 fn scopes_arg_is_the_full_urls_joined_with_commas() {
-    let selection = Selection::from_levels([(Service::Calendar, Level::Write)]);
+    let selection = Selection::from_levels([
+        (Service::Calendar, Level::Write),
+        (Service::Tasks, Level::Read),
+    ]);
     let arg = scopes::scopes_arg(&selection);
     let mut parts: Vec<&str> = arg.split(',').collect();
     parts.sort();
@@ -276,10 +269,185 @@ fn scopes_arg_is_the_full_urls_joined_with_commas() {
         parts,
         [
             "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/calendar.readonly",
+            "https://www.googleapis.com/auth/tasks.readonly",
         ]
     );
     assert!(!arg.contains(' '));
+}
+
+#[test]
+fn a_write_scope_replaces_its_read_only_counterpart_but_not_unrelated_read_scopes() {
+    let chat = sorted_scopes(&Selection::from_levels([(Service::Chat, Level::Write)]));
+    assert!(chat.contains(&url("chat.messages")));
+    assert!(!chat.iter().any(|scope| scope.ends_with(".readonly")));
+
+    // `drive` covers `drive.scripts` but not `drive.apps.readonly`.
+    let drive = sorted_scopes(&Selection::from_levels([(Service::Drive, Level::Write)]));
+    assert_eq!(drive, sorted(&["drive", "drive.apps.readonly"]));
+}
+
+#[test]
+fn admin_leaves_out_aliases_device_actions_and_members_that_broader_scopes_cover() {
+    let groups = sorted_scopes(&Selection::from_levels([(
+        Service::AdminGroups,
+        Level::Write,
+    )]));
+    assert_eq!(groups, sorted(&["admin.directory.group"]));
+    let groups_read = sorted_scopes(&Selection::from_levels([(
+        Service::AdminGroups,
+        Level::Read,
+    )]));
+    assert_eq!(groups_read, sorted(&["admin.directory.group.readonly"]));
+
+    let directory = sorted_scopes(&Selection::from_levels([(
+        Service::AdminDirectory,
+        Level::Write,
+    )]));
+    for covered in [
+        "admin.directory.user.alias",
+        "admin.directory.user.alias.readonly",
+        "admin.directory.device.mobile.action",
+    ] {
+        assert!(!directory.contains(&url(covered)), "{covered} requested");
+    }
+    assert!(directory.contains(&url("admin.directory.user")));
+    assert!(directory.contains(&url("admin.directory.device.mobile")));
+}
+
+#[test]
+fn gmail_full_access_requests_only_full_mail_and_basic_settings() {
+    // `https://mail.google.com/` covers every `gmail.readonly` method, and
+    // `gmail.settings.sharing` works only for service accounts with domain-wide delegation.
+    let gmail = sorted_scopes(&Selection::from_levels([(Service::Gmail, Level::Write)]));
+    assert_eq!(
+        gmail,
+        sorted(&["https://mail.google.com/", "gmail.settings.basic"])
+    );
+}
+
+#[test]
+fn chat_leaves_out_reactions_and_pins_that_messages_and_spaces_cover() {
+    let read = sorted_scopes(&Selection::from_levels([(Service::Chat, Level::Read)]));
+    assert_eq!(
+        read,
+        sorted(&[
+            "chat.spaces.readonly",
+            "chat.messages.readonly",
+            "chat.memberships.readonly",
+            "chat.users.readstate.readonly",
+            "chat.users.sections.readonly",
+            "chat.users.availability.readonly",
+            "chat.customemojis.readonly",
+            "chat.admin.spaces.readonly",
+            "chat.admin.memberships.readonly",
+        ])
+    );
+    let write = sorted_scopes(&Selection::from_levels([(Service::Chat, Level::Write)]));
+    assert_eq!(
+        write,
+        sorted(&[
+            "chat.spaces",
+            "chat.memberships",
+            "chat.messages",
+            "chat.users.readstate",
+            "chat.users.sections",
+            "chat.users.availability",
+            "chat.users.spacesettings",
+            "chat.customemojis",
+            "chat.delete",
+            "chat.admin.spaces",
+            "chat.admin.memberships",
+            "chat.admin.delete",
+        ])
+    );
+}
+
+#[test]
+fn the_selection_that_hit_googles_scope_limit_now_fits_in_one_login() {
+    // Full access to these services asked for 57 scopes (60 with the identity scopes gws
+    // adds), and Google's consent screen failed after "Allow".
+    let selection = Selection::from_levels(
+        [
+            Service::Gmail,
+            Service::Calendar,
+            Service::Chat,
+            Service::Meet,
+            Service::Drive,
+            Service::Docs,
+            Service::Sheets,
+            Service::Slides,
+            Service::Forms,
+            Service::People,
+        ]
+        .map(|service| (service, Level::Write)),
+    );
+    let requested = scopes::login_scopes(&selection, &BusinessSelection::new());
+    assert_eq!(requested.len(), 34);
+    assert!(requested.len() <= scopes::MAX_LOGIN_SCOPES);
+}
+
+#[test]
+fn full_access_to_the_whole_catalogue_is_still_over_googles_scope_limit() {
+    // Known: 54 Workspace scopes + 7 business scopes. `save` refuses this selection.
+    let everything = Selection::from_levels(Service::ALL.map(|service| (service, Level::Write)));
+    let business = BusinessSelection::from_levels(
+        [
+            BusinessConnector::Youtube,
+            BusinessConnector::GoogleAds,
+            BusinessConnector::Analytics,
+            BusinessConnector::SearchConsole,
+            BusinessConnector::BusinessProfile,
+            BusinessConnector::MerchantCenter,
+        ]
+        .map(|connector| (connector, Level::Write)),
+    );
+    let requested = scopes::login_scopes(&everything, &business);
+    assert_eq!(requested.len(), 61);
+    assert!(requested.len() > scopes::MAX_LOGIN_SCOPES);
+}
+
+#[test]
+fn a_granted_write_scope_also_grants_its_read_only_counterpart() {
+    assert_eq!(
+        scopes::selection_from_scopes(&[url("calendar")]),
+        Selection::from_levels([
+            (Service::Calendar, Level::Read),
+            (Service::Calendar, Level::Write),
+        ])
+    );
+    // The other direction does not hold: read-only never implies write.
+    assert_eq!(
+        scopes::selection_from_scopes(&[url("calendar.readonly")]),
+        Selection::from_levels([(Service::Calendar, Level::Read)])
+    );
+    // Full mail access alone also grants Gmail Read.
+    assert_eq!(
+        scopes::selection_from_scopes(&["https://mail.google.com/".to_string()]),
+        Selection::from_levels([(Service::Gmail, Level::Read)])
+    );
+}
+
+#[test]
+fn grants_from_the_previous_catalogue_still_map_to_the_same_levels() {
+    // Before the scope reduction, Gmail and Chat Full access also asked for these scopes.
+    let mut granted: Vec<String> = [
+        "gmail.readonly",
+        "gmail.settings.basic",
+        "gmail.settings.sharing",
+        "chat.messages.reactions",
+        "chat.spaces.pins",
+    ]
+    .iter()
+    .map(|scope| url(scope))
+    .collect();
+    granted.push("https://mail.google.com/".to_string());
+    assert_eq!(
+        scopes::selection_from_scopes(&granted),
+        Selection::from_levels([
+            (Service::Gmail, Level::Read),
+            (Service::Gmail, Level::Write)
+        ])
+    );
 }
 
 #[test]
@@ -454,10 +622,12 @@ fn business_selection_maps_youtube_read_scope() {
 #[test]
 fn every_business_connector_maps_read_and_full_access_scopes() {
     let rows: [(BusinessConnector, &[&str], &[&str]); 6] = [
+        // `youtube` covers `youtube.readonly` and `webmasters` covers `webmasters.readonly`;
+        // `analytics.edit` does not cover `analytics.readonly`.
         (
             BusinessConnector::Youtube,
             &["youtube.readonly"],
-            &["youtube.readonly", "youtube"],
+            &["youtube"],
         ),
         (BusinessConnector::GoogleAds, &["adwords"], &["adwords"]),
         (
@@ -468,7 +638,7 @@ fn every_business_connector_maps_read_and_full_access_scopes() {
         (
             BusinessConnector::SearchConsole,
             &["webmasters.readonly"],
-            &["webmasters.readonly", "webmasters"],
+            &["webmasters"],
         ),
         (
             BusinessConnector::BusinessProfile,
